@@ -1,0 +1,211 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CampusHub – Firestore security rules (Module 1)
+//
+// GOAL: a student of university A can NEVER read or write data of university B.
+//
+// How it works
+//   * Everything that belongs to a university lives under  universities/{uniId}/…
+//   * Access is granted by ONE document:  universities/{uniId}/members/{uid}
+//     with status == 'active'. That document can only be changed by an admin
+//     of the same university, never by the student themselves.
+//   * Later modules add their own sub-collections (events, posts, photos …)
+//     inside the "universities/{uniId}" block below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(uniId) {
+      return /databases/$(database)/documents/universities/$(uniId)/members/$(request.auth.uid);
+    }
+
+    function isMember(uniId) {
+      return signedIn() && exists(memberPath(uniId));
+    }
+
+    function member(uniId) {
+      return get(memberPath(uniId)).data;
+    }
+
+    function isActive(uniId) {
+      return isMember(uniId) && member(uniId).status == 'active';
+    }
+
+    function hasRole(uniId, roles) {
+      return isActive(uniId) && member(uniId).role in roles;
+    }
+
+    function isAdmin(uniId) {
+      return hasRole(uniId, ['uni_admin', 'dept_admin']);
+    }
+
+    function isUniAdmin(uniId) {
+      return hasRole(uniId, ['uni_admin']);
+    }
+
+    // ── users/{uid}: identity only – grants NO permissions ───────────────────
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // ── universities ─────────────────────────────────────────────────────────
+    match /universities/{uniId} {
+
+      // Public university card (name, colour, departments) so a new student can
+      // pick their university. Only the CampusHub team writes these
+      // (via the Firebase console / Admin SDK).
+      allow read: if signedIn();
+      allow write: if false;
+
+      // ── members: the access-control list ──────────────────────────────────
+      match /members/{userId} {
+
+        // A student can see their own record; active members of the same
+        // university can see each other (needed for society/event features).
+        allow read: if signedIn() && (request.auth.uid == userId || isActive(uniId));
+
+        // A student asks to join: can only create THEIR OWN record, and only
+        // as a pending student. They cannot give themselves a role or approve
+        // themselves.
+        allow create: if signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.status == 'pending'
+          && request.resource.data.role == 'student'
+          && request.resource.data.keys().hasOnly(
+               ['name', 'email', 'photoUrl', 'studentId', 'department', 'batch',
+                'role', 'status', 'createdAt']);
+
+        // Admins approve / reject / suspend. Only a university admin may change roles.
+        allow update: if isAdmin(uniId)
+          && (
+            request.resource.data.role == resource.data.role
+            || isUniAdmin(uniId)
+          );
+
+        // A student may withdraw (leave) or delete their own account data.
+        allow delete: if signedIn() && (request.auth.uid == userId || isUniAdmin(uniId));
+      }
+
+      // ── posts (Module 2) ──────────────────────────────────────────────────
+      function canPost(kind) {
+        return (kind == 'official' && hasRole(uniId, ['dept_admin', 'uni_admin']))
+          || (kind == 'society' && hasRole(uniId, ['society_head', 'dept_admin', 'uni_admin']))
+          || (kind == 'alert' && hasRole(uniId, ['security', 'dept_admin', 'uni_admin']));
+      }
+
+      // A counter may only move by one step. (Move to Cloud Functions before public launch.)
+      function bumps(field, maxStep) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([field])
+          && request.resource.data[field] - resource.data[field] <= maxStep
+          && request.resource.data[field] - resource.data[field] >= -maxStep;
+      }
+
+      match /posts/{postId} {
+        allow read: if isActive(uniId);
+
+        // Only the roles allowed for that kind can publish, and only as themselves.
+        allow create: if canPost(request.resource.data.kind)
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.likeCount == 0
+          && request.resource.data.commentCount == 0
+          && request.resource.data.readCount == 0;
+
+        // Members may only nudge the counters; admins may edit or remove posts.
+        allow update: if isAdmin(uniId)
+          || (isActive(uniId)
+              && (bumps('likeCount', 1) || bumps('commentCount', 1) || bumps('readCount', 1)));
+        allow delete: if isAdmin(uniId) || (isActive(uniId) && resource.data.authorId == request.auth.uid);
+
+        match /comments/{commentId} {
+          allow read: if isActive(uniId);
+          allow create: if isActive(uniId)
+            && request.resource.data.authorId == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 500;
+          allow delete: if isAdmin(uniId) || (isActive(uniId) && resource.data.authorId == request.auth.uid);
+        }
+      }
+
+      // Per-student state under their own member document.
+      match /members/{userId}/{sub}/{postId} {
+        allow read, write: if isActive(uniId) && request.auth.uid == userId
+          && sub in ['likes', 'bookmarks', 'reads'];
+      }
+
+      // ── events, tickets and guest passes (Module 3) ───────────────────────
+      function isScanner() {
+        return hasRole(uniId, ['security', 'society_head', 'dept_admin', 'uni_admin']);
+      }
+      function isOrganiser() {
+        return hasRole(uniId, ['society_head', 'dept_admin', 'uni_admin']);
+      }
+      function onlyChanges(keys) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+      }
+      function stepsBy(field, n) {
+        return request.resource.data[field] - resource.data[field] <= n
+          && request.resource.data[field] - resource.data[field] >= -n;
+      }
+
+      match /events/{eventId} {
+        allow read: if isActive(uniId);
+        allow create: if isOrganiser()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.goingCount == 0
+          && request.resource.data.checkedInCount == 0;
+        // Organisers edit events. Students only move the seat counters (by one step) when they
+        // take or give up a seat. Scanners only move checkedInCount. (Counters move to Cloud
+        // Functions before a public launch.)
+        allow update: if isOrganiser()
+          || (isActive(uniId)
+              && onlyChanges(['goingCount', 'interestedCount', 'waitlistCount', 'volunteerCount'])
+              && stepsBy('goingCount', 1) && stepsBy('interestedCount', 1)
+              && stepsBy('waitlistCount', 1) && stepsBy('volunteerCount', 1))
+          || (isScanner() && onlyChanges(['checkedInCount']) && stepsBy('checkedInCount', 1));
+        allow delete: if isAdmin(uniId);
+
+        // A student's RSVP. When status == 'going' the `code` field IS the ticket secret, so only
+        // the owner and gate staff may read it.
+        match /rsvps/{uid} {
+          allow read: if isActive(uniId) && (request.auth.uid == uid || isScanner());
+          allow create: if isActive(uniId) && request.auth.uid == uid
+            && request.resource.data.status in ['going', 'interested', 'waitlist']
+            && request.resource.data.checkedInAt == null;
+          allow update: if (isActive(uniId) && request.auth.uid == uid && onlyChanges(['volunteer', 'rating', 'feedback']))
+            || (isScanner() && onlyChanges(['checkedInAt']));
+          allow delete: if isActive(uniId) && request.auth.uid == uid;
+        }
+      }
+
+      match /guestPasses/{passId} {
+        allow read: if isActive(uniId) && (resource.data.hostUid == request.auth.uid || isScanner());
+        allow create: if isActive(uniId)
+          && request.resource.data.hostUid == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.checkedInAt == null;
+        // Organisers approve or reject. Gate staff only stamp the check-in time.
+        allow update: if (isOrganiser() && onlyChanges(['status']))
+          || (isScanner() && onlyChanges(['checkedInAt']));
+        allow delete: if isAdmin(uniId);
+      }
+
+      // ── everything else in this university: members only (read) ───────────
+      // Later modules add their own rules above. Collections that hold secrets (events with
+      // ticket codes, guest passes, member records, posts) are excluded here on purpose:
+      // rules OR together, so a broad "read" rule would otherwise expose them to every member.
+      match /{collection}/{docId=**} {
+        allow read: if isActive(uniId)
+          && !(collection in ['events', 'guestPasses', 'members', 'posts']);
+        allow write: if false;
+      }
+    }
+  }
+}

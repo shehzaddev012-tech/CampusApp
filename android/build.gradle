@@ -1,0 +1,34 @@
+buildscript {
+    ext {
+        buildToolsVersion = "37.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 37
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        // Keep at 2.2.x: AsyncStorage v3's KSP plugin only supports Kotlin <= 2.2.20.
+        kotlinVersion = "2.2.0"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        // Firebase config plugin. It is only applied when google-services.json exists
+        // (see app/build.gradle), so the app also builds in offline "demo mode".
+        classpath("com.google.gms:google-services:4.4.4")
+    }
+}
+
+// The newest Firebase Android SDKs are built with Kotlin 2.4 metadata while this project
+// compiles with Kotlin 2.2. The libraries only expose plain Java-style APIs to us, so we tell the
+// Kotlin compiler not to reject the newer metadata version.
+subprojects {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        compilerOptions.freeCompilerArgs.add("-Xskip-metadata-version-check")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"

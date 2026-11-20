@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "167110503186",
+    "project_id": "campus-hub-c80dc",
+    "storage_bucket": "campus-hub-c80dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167110503186:android:a01433645cf3eb6321e1cb",
+        "android_client_info": {
+          "package_name": "com.campushub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "167110503186-jrr3m6tsnm433t6pks5fp6o5d6vd9r0j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.campushub",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "167110503186-3pqapg00h8mggkgv5kpdr2iccenbbpgg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqJHx1DO6F96sV6DPtim2AsXAzWDXT6QQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "167110503186-3pqapg00h8mggkgv5kpdr2iccenbbpgg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

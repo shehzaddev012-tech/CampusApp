@@ -67,7 +67,7 @@ export function calendarUrl(e: CampusEvent): string {
     `text=${encodeURIComponent(e.title)}`,
     `dates=${fmt(e.startsAt)}/${fmt(e.endsAt)}`,
     `location=${encodeURIComponent(e.venue)}`,
-    `details=${encodeURIComponent(`${e.blurb}\n\nOrganised by ${e.organizer}. Added from CampusHub.`)}`,
+    `details=${encodeURIComponent(`${e.blurb}\n\nOrganised by ${e.organizer}. Added from IAC Campus.`)}`,
   ].join('&');
   return `https://calendar.google.com/calendar/render?${q}`;
 }

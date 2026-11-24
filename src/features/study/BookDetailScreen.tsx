@@ -181,7 +181,7 @@ export function BookDetailScreen({ navigation, route }: Props) {
                             {p.name}
                           </Text>
                           <Text variant="caption" color="textTertiary">
-                            {p.department} · Batch {p.batch} · {timeAgo(p.createdAt)}
+                            {p.department} · {timeAgo(p.createdAt)}
                           </Text>
                         </View>
                       </View>

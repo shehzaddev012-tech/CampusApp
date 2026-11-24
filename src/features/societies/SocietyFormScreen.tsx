@@ -23,7 +23,7 @@ export function SocietyFormScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const role = useSession(s => s.membership?.role);
   const show = useToast(s => s.show);
-  const isAdmin = role === 'uni_admin' || role === 'dept_admin';
+  const isAdmin = role === 'uni_admin';
 
   const [name, setName] = useState('');
   const [about, setAbout] = useState('');

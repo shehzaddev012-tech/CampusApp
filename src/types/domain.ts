@@ -1,11 +1,13 @@
-/** Core domain types shared across the app. */
+﻿/** Core domain types shared across the app. */
 
 export type Role =
   | 'student'
   | 'society_head'
-  | 'dept_admin'
   | 'uni_admin'
   | 'security';
+
+/** An IAC student ID: IAC-FA22-BCS-021 (the intake, the programme, the roll number). The server checks the same rule. */
+export const STUDENT_ID_RE = /^IAC-[A-Z]{2}\d{2}-[A-Z]{2,6}-\d{2,4}$/;
 
 export type MembershipStatus = 'pending' | 'active' | 'rejected' | 'suspended';
 
@@ -45,7 +47,6 @@ export interface JoinRequestInput {
   university: University;
   studentId: string;
   department: string;
-  batch: string;
 }
 
 export type Unsubscribe = () => void;
@@ -149,8 +150,8 @@ export type CheckInResult =
     };
 
 /** Roles that may create events, scan tickets and approve guest passes. */
-export const EVENT_STAFF: Role[] = ['society_head', 'dept_admin', 'uni_admin'];
-export const SCANNER_ROLES: Role[] = ['security', 'society_head', 'dept_admin', 'uni_admin'];
+export const EVENT_STAFF: Role[] = ['society_head', 'uni_admin'];
+export const SCANNER_ROLES: Role[] = ['security', 'society_head', 'uni_admin'];
 
 export function canCreateEvents(role: Role): boolean {
   return EVENT_STAFF.includes(role);
@@ -225,7 +226,8 @@ export interface AppNotification {
   read: boolean;
 }
 
-/** The server emailed a 6-digit code. esendAfterSeconds is how long until another can be requested. */
+/** The server emailed a 6-digit code. 
+esendAfterSeconds is how long until another can be requested. */
 export interface CodeSent {
   email: string;
   resendAfterSeconds: number;
@@ -241,9 +243,9 @@ export type PushPermission = 'granted' | 'denied' | 'undetermined';
 
 /** Roles that may publish each kind of post. The server enforces the same table. */
 export const POSTING_ROLES: Record<PostKind, Role[]> = {
-  official: ['dept_admin', 'uni_admin'],
-  society: ['society_head', 'dept_admin', 'uni_admin'],
-  alert: ['security', 'dept_admin', 'uni_admin'],
+  official: ['uni_admin'],
+  society: ['society_head', 'uni_admin'],
+  alert: ['security', 'uni_admin'],
 };
 
 export function allowedPostKinds(role: Role): PostKind[] {
@@ -253,8 +255,7 @@ export function allowedPostKinds(role: Role): PostKind[] {
 export const ROLE_LABEL: Record<Role, string> = {
   student: 'Student',
   society_head: 'Society Head',
-  dept_admin: 'Department Admin',
-  uni_admin: 'University Admin',
+  uni_admin: 'Admin',
   security: 'Gate Security',
 };
 
@@ -383,107 +384,7 @@ export interface PickedPhoto {
 }
 export const EVENT_CATEGORIES: EventCategory[] = ['Tech', 'Sports', 'Cultural', 'Career', 'Social'];
 
-/* ── Points, rewards, lost & found, student card (Module 5) ─────────────── */
-
-export interface BadgeProgress {
-  id: string;
-  title: string;
-  description: string;
-  /** Name of a lucide icon. */
-  icon: string;
-  earned: boolean;
-  awardedAt: number | null;
-  progress: { value: number; goal: number };
-}
-
-export interface LedgerEntry {
-  id: string;
-  kind: string;
-  points: number;
-  label: string;
-  createdAt: number;
-}
-
-export interface PointsSummary {
-  /** Points I can spend. */
-  balance: number;
-  /** Points I have ever earned (what level and rank are based on). */
-  earned: number;
-  level: { index: number; name: string; min: number; next: { name: string; min: number } | null };
-  streakWeeks: number;
-  stats: { events: number; volunteer: number; societies: number; photos: number };
-  badges: BadgeProgress[];
-  recent: LedgerEntry[];
-  rank: { week: number | null; all: number | null };
-  leaderboardVisible: boolean;
-}
-
-export type BoardScope = 'students' | 'departments' | 'societies';
-export type BoardPeriod = 'week' | 'month' | 'all';
-
-export interface BoardEntry {
-  rank: number;
-  uid: string;
-  name: string;
-  photoUrl: string | null;
-  subtitle: string;
-  score: number;
-  /** This row is me (or my department / one of my societies). */
-  me: boolean;
-  category?: EventCategory;
-}
-
-export interface Leaderboard {
-  scope: BoardScope;
-  period: BoardPeriod;
-  entries: BoardEntry[];
-  myRank: number | null;
-}
-
-export interface Reward {
-  id: string;
-  title: string;
-  description: string;
-  cost: number;
-  stock: number | null;
-  active: boolean;
-  soldOut: boolean;
-  canAfford: boolean;
-  createdAt: number;
-}
-
-export interface RewardsView {
-  balance: number;
-  rewards: Reward[];
-}
-
-export interface NewRewardInput {
-  title: string;
-  description: string;
-  cost: number;
-  stock: number | null;
-}
-
-export type RedemptionStatus = 'pending' | 'collected' | 'cancelled';
-
-export interface Redemption {
-  id: string;
-  /** Shown to the student while the reward is waiting to be collected. */
-  code: string | null;
-  status: RedemptionStatus;
-  cost: number;
-  title: string;
-  createdAt: number;
-  resolvedAt: number | null;
-}
-
-export interface WaitingRedemption {
-  id: string;
-  title: string;
-  student: string;
-  cost: number;
-  createdAt: number;
-}
+/* ── Lost & found, student card ─────────────────────────────────────────── */
 
 export type LostKind = 'lost' | 'found';
 
@@ -712,9 +613,6 @@ export interface CvData {
   eventsAttended: { title: string; date: number }[];
   volunteering: { title: string; date: number }[];
   societies: { name: string; role: string }[];
-  badges: { title: string; awardedAt: number }[];
-  points: number;
-  level: string;
 }
 export interface CvProfileInput {
   summary: string;
@@ -722,7 +620,36 @@ export interface CvProfileInput {
   links: string[];
 }
 
-export type ReportTarget = 'note' | 'book' | 'study_group' | 'job' | 'lost_item' | 'photo' | 'message' | 'user';
+export type ReportTarget = 'note' | 'book' | 'study_group' | 'job' | 'lost_item' | 'photo' | 'message' | 'user' | 'story';
+
+/* ── Campus stories (a picture and a line, gone after 24 hours) ─────────── */
+
+export interface Story {
+  id: string;
+  caption: string;
+  createdAt: number;
+  expiresAt: number;
+  /** null for a story that is only words. */
+  image: MediaPicture | null;
+  /** Background colour of a words-only story. */
+  bg: string;
+  seen: boolean;
+  /** Only filled in for my own stories. */
+  viewCount: number | null;
+}
+export interface StoryPerson {
+  uid: string;
+  name: string;
+  photoUrl: string | null;
+  mine: boolean;
+  hasUnseen: boolean;
+  stories: Story[];
+}
+export interface StoryViewer {
+  uid: string;
+  name: string;
+  viewedAt: number;
+}
 export type ReportReason = 'spam' | 'inappropriate' | 'copyright' | 'scam' | 'harassment' | 'other';
 export interface ModerationReport {
   id: string;
@@ -737,26 +664,126 @@ export interface ModerationReport {
   createdAt: number;
 }
 // ── Chat ─────────────────────────────────────────────────────────────────────
+/** A group students made themselves (like a WhatsApp group). */
+export interface ChatGroupMember {
+  uid: string;
+  name: string;
+  photoUrl: string | null;
+  role: 'member' | 'admin';
+  joinedAt: number;
+  isMe: boolean;
+}
+export interface ChatGroupInfo {
+  id: string;
+  name: string;
+  about: string;
+  onlyAdminsPost: boolean;
+  createdAt: number;
+  myRole: 'member' | 'admin';
+  members: ChatGroupMember[];
+}
 export interface ChatSummary {
   id: string;
-  kind: 'dm' | 'society' | 'group';
+  /** 'custom' = a group students made; 'group' = a study group's room. */
+  kind: 'dm' | 'society' | 'group' | 'custom';
   title: string;
   otherUserId: string | null;
+  otherPhotoUrl: string | null;
+  /** For a society or study-group room: the id of that society / group. */
+  targetId: string | null;
   memberCount: number | null;
   lastMessage: { body: string; at: number; sender: string | null } | null;
   unread: number;
 }
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  body: string;
-  createdAt: number;
+/** The quick reactions (the same six the server accepts). */
+export const CHAT_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
+export interface ChatReaction {
+  emoji: string;
+  count: number;
   mine: boolean;
 }
+export interface ChatAttachment {
+  kind: 'image' | 'file';
+  name: string;
+  mime: string;
+  bytes: number;
+  /** The picture, or the document download. */
+  url: string;
+  thumbUrl: string | null;
+  width: number | null;
+  height: number | null;
+}
+/** The message a reply answers (shown as a quote above the reply). */
+export interface ChatQuote {
+  id: string;
+  senderName: string;
+  body: string;
+  attachmentKind: 'image' | 'file' | null;
+  deleted: boolean;
+}
+export interface ChatMessage {
+  id: string;
+  /** 'system' = a line in the middle of a group ("Ayesha added Bilal"). */
+  kind: 'text' | 'system';
+  senderId: string;
+  senderName: string;
+  /** The text, or the caption of a picture or document (may be empty). */
+  body: string;
+  /** Deleted for everyone: it keeps its place but has no content. */
+  deleted: boolean;
+  createdAt: number;
+  mine: boolean;
+  replyTo: ChatQuote | null;
+  attachment: ChatAttachment | null;
+  reactions: ChatReaction[];
+}
+/** How far the other people have received / read the conversation (ms). Null for big rooms, which show no ticks. */
+export interface ChatReceipts {
+  deliveredAt: number;
+  readAt: number;
+}
+export interface ChatThread {
+  messages: ChatMessage[];
+  receipts: ChatReceipts | null;
+}
+export interface ChatPresence {
+  online: boolean;
+  lastSeenAt: number | null;
+}
+/** What you see when you tap a person's name in a chat. */
+export interface PersonProfile {
+  uid: string;
+  name: string;
+  photoUrl: string | null;
+  department: string;
+  role: Role;
+  joinedAt: number;
+  societies: { id: string; name: string; head: boolean }[];
+}
+
 export interface Person {
   uid: string;
   name: string;
+  photoUrl: string | null;
   department: string;
   batch: string;
+}
+
+/* ── Admin: the numbers behind the university, and who came to an event ──── */
+
+export interface AdminStats {
+  members: { active: number; pending: number; suspended: number; joinedLast30Days: number };
+  events: { upcoming: number; heldLast30Days: number; ticketsLast30Days: number; checkedInLast30Days: number };
+  content: { postsLast30Days: number; openReports: number; openJobs: number; openLostFound: number; notes: number; booksForSale: number; openStudyGroups: number; photos: number; messagesLast7Days: number };
+  membersByDepartment: { department: string; count: number }[];
+  recentEvents: { id: string; title: string; startsAt: number; going: number; checkedIn: number; capacity: number | null }[];
+  topSocieties: { name: string; members: number }[];
+}
+
+export interface EventAttendee {
+  name: string;
+  status: 'going' | 'waitlist';
+  checkedInAt: number | null;
+  volunteer: boolean;
+  rating: number | null;
 }

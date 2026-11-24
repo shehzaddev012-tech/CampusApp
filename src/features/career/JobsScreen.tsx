@@ -24,7 +24,7 @@ export function JobsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const show = useToast(s => s.show);
   const role = useSession(s => s.membership?.role);
-  const isAdmin = role === 'uni_admin' || role === 'dept_admin';
+  const isAdmin = role === 'uni_admin';
   const [scope, setScope] = useState<'open' | 'saved'>('open');
   const [kind, setKind] = useState<JobKind | undefined>();
   const [q, setQ] = useState('');
@@ -62,7 +62,7 @@ export function JobsScreen({ navigation }: Props) {
 
   const apply = async (j: Job) => {
     const target = j.applyUrl ?? `mailto:${j.applyEmail}`;
-    if (j.applyUrl && !(await confirm({ title: 'Open the application page?', message: `You will leave CampusHub and open ${new URL(j.applyUrl).host}.`, confirmLabel: 'Open', tone: 'neutral' }))) {
+    if (j.applyUrl && !(await confirm({ title: 'Open the application page?', message: `You will leave IAC Campus and open ${new URL(j.applyUrl).host}.`, confirmLabel: 'Open', tone: 'neutral' }))) {
       return;
     }
     Linking.openURL(target).catch(() => fail('Could not open the link', new Error('No app on this phone can open it.')));

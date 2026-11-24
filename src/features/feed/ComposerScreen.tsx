@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Lock, Megaphone } from 'lucide-react-native';
 
 import { Button, Card, Chip, EmptyState, Input, Text, TopBar } from '../../components/ui';
+import { minHint } from '../../utils/minHint';
 import type { AppStackParamList } from '../../navigation/types';
 import { useFeed } from '../../store/feedStore';
 import { useSession } from '../../store/sessionStore';
@@ -21,9 +22,6 @@ function defaultSource(kind: PostKind, role: Role, m: Membership, uni: Universit
   if (kind === 'alert' && role === 'security') {
     return 'Campus Security';
   }
-  if (role === 'dept_admin') {
-    return `${m.department} Department`;
-  }
   return `${uni?.name ?? 'University'} Administration`;
 }
 
@@ -37,7 +35,7 @@ export function ComposerScreen({ navigation, route }: Props) {
 
   const kinds = membership ? allowedPostKinds(membership.role) : [];
   const societies = useSocieties(s => s.societies);
-  const isAdmin = membership?.role === 'uni_admin' || membership?.role === 'dept_admin';
+  const isAdmin = membership?.role === 'uni_admin';
   const mine = manageableSocieties(societies, isAdmin);
   const [societyId, setSocietyId] = useState<string | null>(route.params?.societyId ?? null);
   const [kind, setKind] = useState<PostKind>(route.params?.societyId && kinds.includes('society') ? 'society' : (kinds[0] ?? 'official'));
@@ -60,7 +58,7 @@ export function ComposerScreen({ navigation, route }: Props) {
     );
   }
 
-  const canPin = (membership.role === 'uni_admin' || membership.role === 'dept_admin') && kind !== 'alert';
+  const canPin = (membership.role === 'uni_admin') && kind !== 'alert';
   // A society update names its society; with only one to choose from, it is chosen for you.
   const society = kind === 'society' ? (mine.find(s => s.id === societyId) ?? (mine.length === 1 ? mine[0] : undefined)) : undefined;
   const needsSociety = kind === 'society';
@@ -153,7 +151,7 @@ export function ComposerScreen({ navigation, route }: Props) {
             value={title}
             onChangeText={setTitle}
             maxLength={90}
-            hint={`${title.length}/90`}
+            hint={minHint(title, 3, 90)}
           />
         </View>
 
@@ -165,6 +163,7 @@ export function ComposerScreen({ navigation, route }: Props) {
             onChangeText={setBody}
             multiline
             maxLength={1500}
+            hint={minHint(body, 10, 1500)}
           />
         </View>
 

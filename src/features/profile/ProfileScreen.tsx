@@ -29,7 +29,6 @@ import {
   SegmentedControl,
   Text,
 } from '../../components/ui';
-import { usePoints } from '../../store/pointsStore';
 import { useSocieties } from '../../store/societyStore';
 import { useEvents } from '../../store/eventStore';
 import type { AppStackParamList } from '../../navigation/types';
@@ -37,7 +36,6 @@ import { useNotifications } from '../../store/notificationStore';
 import { useSession } from '../../store/sessionStore';
 import { ThemeMode, categoryColor, useTheme } from '../../theme';
 import { ROLE_LABEL } from '../../types/domain';
-import { comingSoon } from '../../utils/comingSoon';
 import { confirm } from '../../utils/confirm';
 import { EventRow } from '../events/EventCard';
 
@@ -47,7 +45,6 @@ export function ProfileScreen() {
   const membership = useSession(s => s.membership);
   const university = useSession(s => s.university);
   const signOut = useSession(s => s.signOut);
-  const leave = useSession(s => s.leaveUniversity);
   const deleteAccount = useSession(s => s.deleteAccount);
   const stack = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const permission = useNotifications(s => s.permission);
@@ -58,7 +55,7 @@ export function ProfileScreen() {
     refreshPermission();
   }, [refreshPermission]);
 
-  const isAdmin = membership?.role === 'uni_admin' || membership?.role === 'dept_admin';
+  const isAdmin = membership?.role === 'uni_admin';
   const pushOn = permission === 'granted';
   const togglePush = (next: boolean) => {
     if (next && permission !== 'denied') {
@@ -79,12 +76,6 @@ export function ProfileScreen() {
     }
   };
 
-  const confirmLeave = async () => {
-    if (await confirm({ title: 'Switch university?', message: 'You will leave your current university and need approval from the new one.', confirmLabel: 'Switch' })) {
-      leave();
-    }
-  };
-
   const confirmDelete = async () => {
     if (await confirm({ title: 'Delete your account?', message: 'This permanently deletes your profile, membership and photos. This cannot be undone.', confirmLabel: 'Delete everything' })) {
       deleteAccount();
@@ -92,7 +83,6 @@ export function ProfileScreen() {
   };
 
   const societies = useSocieties(s => s.societies);
-  const points = usePoints(s => s.summary);
   const joined = societies.filter(s => s.joined);
   const events = useEvents(s => s.events);
   const rsvps = useEvents(s => s.rsvps);
@@ -109,7 +99,7 @@ export function ProfileScreen() {
         <View style={styles.top}>
           <Avatar name={user?.name ?? 'Student'} uri={user?.photoUrl} size={84} />
           <View style={styles.topRight}>
-            <IconButton icon={Pencil} onPress={() => comingSoon('Edit profile')} accessibilityLabel="Edit profile" />
+            <IconButton icon={Pencil} onPress={() => stack.navigate('EditProfile')} accessibilityLabel="Edit profile" />
           </View>
         </View>
         <Text variant="title1" style={styles.name}>
@@ -124,7 +114,7 @@ export function ProfileScreen() {
         </View>
         {membership ? (
           <Text variant="small" color="textSecondary" style={styles.studentLine}>
-            {membership.studentId} · {membership.department} · Batch {membership.batch}
+            {membership.studentId} · {membership.department}
           </Text>
         ) : null}
       </FadeIn>
@@ -133,9 +123,7 @@ export function ProfileScreen() {
       <View style={[styles.stats, { borderColor: colors.border }]}>
         <Stat value={String(attended)} label="Events attended" />
         <View style={[styles.statLine, { backgroundColor: colors.border }]} />
-        <Stat value={String(points?.balance ?? 0)} label="Points" onPress={() => stack.navigate('Points')} />
-        <View style={[styles.statLine, { backgroundColor: colors.border }]} />
-        <Stat value={String(points?.badges.filter(b => b.earned).length ?? 0)} label="Badges" onPress={() => stack.navigate('Points')} />
+        <Stat value={String(joined.length)} label="Societies" />
       </View>
 
       {/* Societies */}
@@ -225,16 +213,12 @@ export function ProfileScreen() {
             onPress={() => stack.navigate('Feed', { saved: true })}
           />
           {isAdmin ? (
-            <>
-              <ListRow icon={Users} title="Members" subtitle="Approve students who asked to join" onPress={() => stack.navigate('Members')} />
-              <ListRow icon={ShieldCheck} title="Reports" subtitle="Review what students reported" onPress={() => stack.navigate('Reports')} />
-            </>
+            <ListRow icon={ShieldCheck} title="Admin" subtitle="Numbers, members, reports and notices" onPress={() => stack.navigate('AdminHome')} />
           ) : null}
-          <ListRow icon={ShieldCheck} title="Privacy and data" onPress={() => comingSoon('Privacy and data')} />
-          <ListRow icon={Building2} title="Switch university" onPress={confirmLeave} />
+          <ListRow icon={ShieldCheck} title="Privacy and data" onPress={() => stack.navigate('Privacy')} />
           <ListRow
             icon={Info}
-            title="About CampusHub"
+            title="About IAC Campus"
             subtitle="Version 1.0.0"
             last
           />
@@ -249,21 +233,14 @@ export function ProfileScreen() {
   );
 }
 
-function Stat({ value, label, onPress }: { value: string; label: string; onPress?: () => void }) {
-  const body = (
-    <>
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.stat}>
       <Text variant="title1">{value}</Text>
       <Text variant="caption" color="textSecondary">
         {label}
       </Text>
-    </>
-  );
-  return onPress ? (
-    <PressableScale onPress={onPress} scaleTo={0.96} accessibilityRole="button" accessibilityLabel={`${value} ${label}. Open my points`} style={styles.stat}>
-      {body}
-    </PressableScale>
-  ) : (
-    <View style={styles.stat}>{body}</View>
+    </View>
   );
 }
 

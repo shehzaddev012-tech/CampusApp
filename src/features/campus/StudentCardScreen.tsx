@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import QRCode from 'react-native-qrcode-svg';
 import { IdCard } from 'lucide-react-native';
 
-import { Avatar, Badge, Button, EmptyState, Text, TopBar } from '../../components/ui';
+import { Avatar, Badge, BrandLoader, Button, EmptyState, Text, TopBar } from '../../components/ui';
 import type { AppStackParamList } from '../../navigation/types';
 import { backend } from '../../services';
 import { GUTTER, PALETTE, useTheme } from '../../theme';
@@ -63,7 +63,7 @@ export function StudentCardScreen({ navigation }: Props) {
           failed ? (
             <EmptyState icon={IdCard} title="Could not load your card" message="Check your connection. It will try again." />
           ) : (
-            <ActivityIndicator color={PALETTE.green} style={styles.loader} />
+            <BrandLoader size={72} onDark style={styles.loader} />
           )
         ) : (
           <>
@@ -84,7 +84,7 @@ export function StudentCardScreen({ navigation }: Props) {
                     {card.studentId}
                   </Text>
                   <Text variant="small" color="textSecondary">
-                    {card.department} · Batch {card.batch}
+                    {card.department}
                   </Text>
                 </View>
               </View>

@@ -41,7 +41,7 @@ export function SocietiesScreen() {
   const status = useSocieties(s => s.status);
   const toggleJoin = useSocieties(s => s.toggleJoin);
   const role = useSession(s => s.membership?.role);
-  const isAdmin = role === 'uni_admin' || role === 'dept_admin';
+  const isAdmin = role === 'uni_admin';
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();

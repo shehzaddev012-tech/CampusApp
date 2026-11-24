@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -11,22 +11,19 @@ import {
   Briefcase,
   CalendarDays,
   FileText,
-  Gift,
   IdCard,
   Images,
   Megaphone,
   MessageCircle,
   PackageSearch,
   Search,
-  Sparkles,
   Ticket,
-  Trophy,
   Users,
   UsersRound,
 } from 'lucide-react-native';
 
 import {
-  Avatar,
+  UniversityLogo,
   FadeIn,
   IconButton,
   PressableScale,
@@ -40,12 +37,12 @@ import type { AppStackParamList, MainTabParamList } from '../../navigation/types
 import { featuredEvent, upcomingEvents, useEvents } from '../../store/eventStore';
 import { sortFeed, useFeed } from '../../store/feedStore';
 import { selectUnreadCount, useNotifications } from '../../store/notificationStore';
-import { usePoints } from '../../store/pointsStore';
 import { useSession } from '../../store/sessionStore';
 import { PALETTE, radius, useTheme } from '../../theme';
 import { firstName, greeting } from '../../utils/comingSoon';
 import { EventRailCard, FeaturedEventCard } from '../events/EventCard';
 import { KindFilter, KindTabs } from '../feed/KindTabs';
+import { StoriesRail } from '../stories/StoriesRail';
 import { UpdateRow } from './UpdateRow';
 
 const HOME_UPDATES = 4;
@@ -60,7 +57,6 @@ export function HomeScreen() {
   const posts = useFeed(s => s.posts);
   const feedStatus = useFeed(s => s.status);
   const unread = useNotifications(selectUnreadCount);
-  const points = usePoints(s => s.summary);
   const events = useEvents(s => s.events);
   const featured = useMemo(() => featuredEvent(events), [events]);
   const railEvents = useMemo(
@@ -86,18 +82,13 @@ export function HomeScreen() {
     <Screen scroll tabScreen>
       {/* Header: university identity, notifications, profile */}
       <View style={styles.header}>
-        <Avatar
-          name={university?.name ?? 'CH'}
-          size={40}
-          square
-          tint={colors.university}
-        />
+        <UniversityLogo size={40} />
         <View style={styles.headerText}>
           <Text variant="overline" color="textSecondary">
             {(university?.fullName ?? 'Your campus').toUpperCase()}
           </Text>
           <Text variant="smallStrong" numberOfLines={1}>
-            {membershipLine(membership?.department, membership?.batch)}
+            {membershipLine(membership?.department)}
           </Text>
         </View>
         <IconButton icon={Search} onPress={() => stack.navigate('Search')} accessibilityLabel="Search" />
@@ -113,6 +104,9 @@ export function HomeScreen() {
           />
         </View>
       </View>
+
+      {/* Campus stories (24 hours) */}
+      <StoriesRail />
 
       {/* Hero */}
       <FadeIn>
@@ -217,19 +211,9 @@ export function HomeScreen() {
         </View>
       </View>
 
-      {/* Campus life: points, rewards, lost & found, student card */}
-      <SectionHeader eyebrow="Earn and explore" title="Campus life" />
+      {/* Campus life: lost & found, student card */}
+      <SectionHeader eyebrow="Around campus" title="Campus life" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.lifeRail}>
-        <LifeCard
-          bg={PALETTE.ink}
-          fg={PALETTE.paper}
-          icon={Sparkles}
-          title="My points"
-          sub={points ? `${points.balance} pts · ${points.level.name}` : 'Level up'}
-          onPress={() => stack.navigate('Points')}
-        />
-        <LifeCard bg={colors.yellow} fg={PALETTE.ink} icon={Trophy} title="Leaderboard" sub="Who is on top" onPress={() => stack.navigate('Leaderboard')} />
-        <LifeCard bg={colors.primary} fg={PALETTE.ink} icon={Gift} title="Rewards" sub="Spend your points" onPress={() => stack.navigate('Rewards')} />
         <LifeCard bg={colors.coral} fg={PALETTE.ink} icon={PackageSearch} title="Lost & Found" sub="Find or post" onPress={() => stack.navigate('LostFound')} />
         <LifeCard bg={colors.sky} fg={PALETTE.ink} icon={IdCard} title="Student card" sub="Your digital ID" onPress={() => stack.navigate('StudentCard')} />
       </ScrollView>
@@ -294,9 +278,9 @@ function LifeCard({ bg, fg, icon: Icon, title, sub, onPress }: { bg: string; fg:
   );
 }
 
-function membershipLine(department?: string, batch?: string): string {
-  if (department && batch) {
-    return `${department} · Batch ${batch}`;
+function membershipLine(department?: string): string {
+  if (department) {
+    return department;
   }
   return 'Welcome back';
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, TextInput, Vibration, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, ScrollView, StyleSheet, TextInput, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -44,6 +44,10 @@ export function ScannerScreen({ navigation, route }: Props) {
   const [manual, setManual] = useState('');
   const last = useRef<{ payload: string; at: number }>({ payload: '', at: 0 });
   const working = useRef(false);
+  const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  // The short code printed under a ticket's QR (ES52-VPIN); it needs an event picked above.
+  const isShort = /^[a-z0-9]{4}-?[a-z0-9]{4}$/i.test(manual.trim());
+  const canCheck = !!parsePayload(manual) || isCardPayload(manual) || (isShort && !!selected);
 
   const handle = useCallback(
     async (payload: string) => {
@@ -101,7 +105,7 @@ export function ScannerScreen({ navigation, route }: Props) {
   const ok = result?.ok === true;
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.background }]} behavior="padding">
       <TopBar
         title="Gate scanner"
         onBack={() => navigation.goBack()}
@@ -117,7 +121,7 @@ export function ScannerScreen({ navigation, route }: Props) {
         }
       />
 
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
+      <ScrollView ref={scroller} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
         {
           <>
             {choices.length === 0 ? (
@@ -195,7 +199,9 @@ export function ScannerScreen({ navigation, route }: Props) {
               <TextInput
                 value={manual}
                 onChangeText={setManual}
-                placeholder="Paste the ticket code"
+                placeholder="Ticket code, e.g. ES52-VPIN"
+                onFocus={() => setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 250)}
+                returnKeyType="done"
                 placeholderTextColor={colors.textTertiary}
                 selectionColor={colors.text}
                 autoCapitalize="none"
@@ -206,13 +212,18 @@ export function ScannerScreen({ navigation, route }: Props) {
                 title="Check"
                 size="md"
                 fullWidth={false}
-                disabled={!parsePayload(manual) && !isCardPayload(manual)}
+                disabled={!canCheck}
                 onPress={() => {
                   handle(manual.trim());
                   setManual('');
                 }}
               />
             </View>
+            {isShort && !selected ? (
+              <Text variant="caption" color="textSecondary" style={styles.tip}>
+                Pick the event at the top first, then the code can be checked.
+              </Text>
+            ) : null}
           </>
         }
       </ScrollView>
@@ -248,7 +259,7 @@ export function ScannerScreen({ navigation, route }: Props) {
           </View>
         </View>
       ) : null}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

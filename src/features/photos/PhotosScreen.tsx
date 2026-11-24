@@ -24,7 +24,7 @@ export function PhotosScreen() {
   const albums = useAlbums(s => s.albums);
   const status = useAlbums(s => s.status);
   const role = useSession(s => s.membership?.role);
-  const canCreate = role === 'society_head' || role === 'dept_admin' || role === 'uni_admin';
+  const canCreate = role === 'society_head' || role === 'uni_admin';
 
   const [lead, ...rest] = albums;
   const colW = (width - GAP) / 2;

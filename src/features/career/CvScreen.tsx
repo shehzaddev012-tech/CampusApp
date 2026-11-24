@@ -20,7 +20,7 @@ const month = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { month: 
 
 /** A plain-text CV the student can send anywhere. Verified items come from the university's own records. */
 function asText(cv: CvData, summary: string, skills: string[], links: string[]): string {
-  const lines: string[] = [cv.name.toUpperCase(), `${cv.department} · ${cv.university}`, `Batch ${cv.batch} · ${cv.email}`, ''];
+  const lines: string[] = [cv.name.toUpperCase(), `${cv.department} · ${cv.university}`, `${cv.email}`, ''];
   if (summary) {
     lines.push('SUMMARY', summary, '');
   }
@@ -35,9 +35,6 @@ function asText(cv: CvData, summary: string, skills: string[], links: string[]):
   }
   if (cv.volunteering.length) {
     lines.push('VOLUNTEERING (verified by the university)', ...cv.volunteering.map(e => `- ${e.title}, ${month(e.date)}`), '');
-  }
-  if (cv.badges.length) {
-    lines.push('ACHIEVEMENTS', ...cv.badges.map(b => `- ${b.title}`), '');
   }
   if (links.length) {
     lines.push('LINKS', ...links, '');
@@ -73,14 +70,19 @@ export function CvScreen({ navigation }: Props) {
   const skillList = skills.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
   const linkList = links.split('\n').map(s => s.trim()).filter(Boolean);
 
-  const save = async (): Promise<boolean> => {
+  const save = async (quiet = false): Promise<boolean> => {
     setBusy(true);
     setError(null);
     try {
       await backend.career.saveCvProfile({ summary: summary.trim(), skills: skillList, links: linkList });
+      if (!quiet) {
+        show({ title: 'CV saved', tone: 'success' });
+      }
       return true;
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+      const msg = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.';
+      setError(msg);
+      show({ title: 'Could not save your CV', body: msg, tone: 'alert' });
       return false;
     } finally {
       setBusy(false);
@@ -88,7 +90,7 @@ export function CvScreen({ navigation }: Props) {
   };
 
   const share = async () => {
-    if (!cv || !(await save())) {
+    if (!cv || !(await save(true))) {
       return;
     }
     try {
@@ -110,7 +112,7 @@ export function CvScreen({ navigation }: Props) {
           <Card padding={16}>
             <Text variant="title3">{cv.name}</Text>
             <Text variant="small" color="textSecondary" style={styles.top}>
-              {cv.department} · Batch {cv.batch}
+              {cv.department}
             </Text>
             <Text variant="small" color="textSecondary">
               {cv.university}
@@ -157,17 +159,10 @@ export function CvScreen({ navigation }: Props) {
               ))}
             </Section>
           ) : null}
-          <Section title="Achievements" empty="Earn badges and they appear here.">
-            {cv.badges.map(b => (
-              <Row key={b.title} label={b.title} />
-            ))}
-          </Section>
 
           <View style={styles.field}>
             <FormError message={error} />
-            <Button title="Save" variant="soft" onPress={save} loading={busy} />
-            <View style={styles.gap} />
-            <Button title="Share my CV" icon={Share2} onPress={share} loading={busy} />
+            <Button title="Save" variant="soft" onPress={() => save()} loading={busy} />
           </View>
         </ScrollView>
       )}
@@ -218,5 +213,4 @@ const styles = StyleSheet.create({
   sectionTitle: { marginBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   rowText: { flex: 1 },
-  gap: { height: 10 },
 });

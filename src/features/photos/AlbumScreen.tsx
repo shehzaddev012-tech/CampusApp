@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, FlatList, Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { Camera, Heart, ImageOff, MoreHorizontal, Star } from 'lucide-react-native';
 
-import { Button, EmptyState, IconButton, PressableScale, Text, TopBar } from '../../components/ui';
+import { BrandLoader, Button, EmptyState, IconButton, PressableScale, Text, TopBar } from '../../components/ui';
 import type { AppStackParamList } from '../../navigation/types';
 import { backend } from '../../services';
 import { useAlbumView } from '../../store/albumStore';
@@ -86,7 +86,7 @@ export function AlbumScreen({ navigation, route }: Props) {
         },
       },
       { text: 'Cancel', style: 'cancel' },
-    ]);
+    ], { cancelable: false });
   };
 
   return (
@@ -101,7 +101,7 @@ export function AlbumScreen({ navigation, route }: Props) {
         <EmptyState icon={ImageOff} title="Could not open this album" message={error} actionLabel="Try again" onAction={() => open(albumId)} />
       ) : !mine ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.text} />
+          <BrandLoader size={64} />
         </View>
       ) : (
         <FlatList
@@ -125,7 +125,7 @@ export function AlbumScreen({ navigation, route }: Props) {
             </View>
           }
           ListEmptyComponent={<EmptyState icon={Camera} title="No photos yet" message="Be the first to add one." />}
-          ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.more} color={colors.text} /> : undefined}
+          ListFooterComponent={loadingMore ? <BrandLoader size={36} style={styles.more} /> : undefined}
           renderItem={({ item }) => (
             <PressableScale onPress={() => navigation.navigate('PhotoViewer', { photoId: item.id })} scaleTo={0.98} accessibilityRole="button" accessibilityLabel="Open photo" style={{ width: size, height: size }}>
               <Image source={{ uri: item.thumbUrl }} style={[styles.thumb, { backgroundColor: colors.surfaceAlt }]} resizeMode="cover" />

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { ReportsScreen } from '../features/admin/ReportsScreen';
@@ -17,15 +17,20 @@ import { NotesScreen } from '../features/study/NotesScreen';
 import { MembersScreen } from '../features/admin/MembersScreen';
 import { ChatScreen } from '../features/chat/ChatScreen';
 import { ChatsScreen } from '../features/chat/ChatsScreen';
+import { GroupChatInfoScreen } from '../features/chat/GroupChatInfoScreen';
+import { NewGroupScreen } from '../features/chat/NewGroupScreen';
+import { AddStoryScreen } from '../features/stories/AddStoryScreen';
+import { EditProfileScreen } from '../features/profile/EditProfileScreen';
+import { PrivacyScreen } from '../features/profile/PrivacyScreen';
+import { StoryViewerScreen } from '../features/stories/StoryViewerScreen';
 import { NewChatScreen } from '../features/chat/NewChatScreen';
 import { LostFoundScreen } from '../features/campus/LostFoundScreen';
 import { LostItemFormScreen } from '../features/campus/LostItemFormScreen';
 import { LostRepliesScreen } from '../features/campus/LostRepliesScreen';
 import { StudentCardScreen } from '../features/campus/StudentCardScreen';
-import { LeaderboardScreen } from '../features/points/LeaderboardScreen';
-import { PointsScreen } from '../features/points/PointsScreen';
-import { RewardFormScreen } from '../features/points/RewardFormScreen';
-import { RewardsScreen } from '../features/points/RewardsScreen';
+import { AdminHomeScreen } from '../features/admin/AdminHomeScreen';
+import { EventAttendeesScreen } from '../features/admin/EventAttendeesScreen';
+import { PersonProfileScreen } from '../features/chat/PersonProfileScreen';
 import { AlbumFormScreen } from '../features/photos/AlbumFormScreen';
 import { AlbumScreen } from '../features/photos/AlbumScreen';
 import { PhotoViewerScreen } from '../features/photos/PhotoViewerScreen';
@@ -56,6 +61,7 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="Tabs" component={MainTabs} options={{ animation: 'fade' }} />
+      <Stack.Screen name="PersonProfile" component={PersonProfileScreen} />
       <Stack.Screen name="Feed" component={FeedScreen} />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} />
       <Stack.Screen name="Composer" component={ComposerScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -69,16 +75,14 @@ export function AppNavigator() {
       <Stack.Screen name="GuestApprovals" component={GuestApprovalsScreen} />
       <Stack.Screen name="EventComposer" component={EventComposerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Members" component={MembersScreen} />
+      <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
+      <Stack.Screen name="EventAttendees" component={EventAttendeesScreen} />
       <Stack.Screen name="SocietyDetail" component={SocietyDetailScreen} />
       <Stack.Screen name="SocietyForm" component={SocietyFormScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="MemberPicker" component={MemberPickerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Album" component={AlbumScreen} />
       <Stack.Screen name="PhotoViewer" component={PhotoViewerScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="AlbumForm" component={AlbumFormScreen} options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Points" component={PointsScreen} />
-      <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
-      <Stack.Screen name="Rewards" component={RewardsScreen} />
-      <Stack.Screen name="RewardForm" component={RewardFormScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="LostFound" component={LostFoundScreen} />
       <Stack.Screen name="LostItemForm" component={LostItemFormScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="LostReplies" component={LostRepliesScreen} />
@@ -99,6 +103,12 @@ export function AppNavigator() {
       <Stack.Screen name="Chats" component={ChatsScreen} />
       <Stack.Screen name="NewChat" component={NewChatScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="NewGroup" component={NewGroupScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="GroupChatInfo" component={GroupChatInfoScreen} />
+      <Stack.Screen name="StoryViewer" component={StoryViewerScreen} options={{ animation: 'fade', gestureDirection: 'vertical' }} />
+      <Stack.Screen name="AddStory" component={AddStoryScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Privacy" component={PrivacyScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,4 +1,4 @@
-export { Text } from './Text';
+﻿export { Text } from './Text';
 export { Button } from './Button';
 export { Card } from './Card';
 export { Avatar, colorFor } from './Avatar';
@@ -16,10 +16,13 @@ export { ScreenHeader } from './ScreenHeader';
 export { ListRow } from './ListRow';
 export { SegmentedControl } from './SegmentedControl';
 export { GoogleButton } from './GoogleButton';
-export { Logo } from './Logo';
+export { Logo, LogoMark } from './Logo';
+export { BrandLoader } from './BrandLoader';
 export { TopBar } from './TopBar';
 export { PatternArt } from './PatternArt';
 export type { PatternKind } from './PatternArt';
 export { FadeIn } from './FadeIn';
 export { PressableScale } from './PressableScale';
 export type { IconType } from './types';
+
+export { UniversityLogo } from './UniversityLogo';

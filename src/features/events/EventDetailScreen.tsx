@@ -8,10 +8,13 @@ import {
   Clock,
   HandHeart,
   MapPin,
+  Pencil,
   ScanLine,
   Share2,
   Star,
   Ticket,
+  Trash2,
+  UserCheck,
   UserPlus,
   Users,
 } from 'lucide-react-native';
@@ -31,6 +34,7 @@ import {
 import type { AppStackParamList } from '../../navigation/types';
 import { useEvents } from '../../store/eventStore';
 import { useSession } from '../../store/sessionStore';
+import { backend } from '../../services';
 import { useToast } from '../../store/toastStore';
 import { GUTTER, PALETTE, useTheme } from '../../theme';
 import { MAX_GUESTS_PER_STUDENT, canScan, seatsLeft } from '../../types/domain';
@@ -59,6 +63,7 @@ export function EventDetailScreen({ navigation, route }: Props) {
   const event = useEvents(s => s.events.find(e => e.id === eventId));
   const rsvp = useEvents(s => s.rsvps[eventId]);
   const allPasses = useEvents(s => s.passes);
+  const pendingGuests = useEvents(s => s.pending.length);
   // Filter here, not inside the selector: a selector that builds a new array on every call
   // makes zustand think the state changed on every render (infinite loop).
   const passes = useMemo(
@@ -112,6 +117,19 @@ export function EventDetailScreen({ navigation, route }: Props) {
       }
     });
 
+  const deleteEvent = async () => {
+    if (!(await confirm({ title: 'Delete this event?', message: 'Its tickets and guest passes are removed for everyone. This cannot be undone.', confirmLabel: 'Delete event' }))) {
+      return;
+    }
+    try {
+      await backend.events.remove(event.id);
+      show({ title: 'Event deleted', tone: 'success' });
+      navigation.goBack();
+    } catch (e) {
+      show({ title: 'Could not delete', body: e instanceof Error ? e.message : undefined, tone: 'alert' });
+    }
+  };
+
   const confirmCancel = async () => {
     const ok = await confirm({
       title: going ? 'Give up your seat?' : waiting ? 'Leave the waiting list?' : 'Remove your interest?',
@@ -126,7 +144,7 @@ export function EventDetailScreen({ navigation, route }: Props) {
 
   const share = () =>
     Share.share({
-      message: `${event.title}\n${dateLabel(event.startsAt)} · ${timeLabel(event.startsAt)} at ${event.venue}\nOrganised by ${event.organizer}. Find it on CampusHub.`,
+      message: `${event.title}\n${dateLabel(event.startsAt)} · ${timeLabel(event.startsAt)} at ${event.venue}\nOrganised by ${event.organizer}. Find it on IAC Campus.`,
     }).catch(() => undefined);
 
   const submitFeedback = async () => {
@@ -393,6 +411,24 @@ export function EventDetailScreen({ navigation, route }: Props) {
                 style={styles.blockBtn}
                 onPress={() => navigation.navigate('Scanner', { eventId: event.id })}
               />
+              <Button
+                title={pendingGuests > 0 ? `Guest requests (${pendingGuests})` : 'Guest requests'}
+                icon={UserCheck}
+                variant="soft"
+                size="md"
+                style={styles.blockBtn}
+                onPress={() => navigation.navigate('GuestApprovals')}
+              />
+              <Button
+                title="Who is coming"
+                icon={Users}
+                variant="soft"
+                size="md"
+                style={styles.blockBtn}
+                onPress={() => navigation.navigate('EventAttendees', { eventId: event.id, title: event.title })}
+              />
+              <Button title="Edit event" icon={Pencil} variant="soft" size="md" style={styles.blockBtn} onPress={() => navigation.navigate('EventComposer', { eventId: event.id })} />
+              <Button title="Delete this event" icon={Trash2} variant="danger" size="md" style={styles.blockBtn} onPress={deleteEvent} />
             </Card>
           ) : null}
         </View>

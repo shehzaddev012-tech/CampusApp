@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { backend } from '../services';
+import { useToast } from './toastStore';
 import type { NewPostInput, Post, PostComment, Unsubscribe, UserPostState } from '../types/domain';
 
 interface FeedState {
@@ -61,7 +62,15 @@ export const useFeed = create<FeedState>()((set, get) => ({
   },
 
   toggleBookmark: async postId => {
-    await backend.posts.setBookmark(postId, !get().userState.bookmarked[postId]);
+    const save = !get().userState.bookmarked[postId];
+    const { show } = useToast.getState();
+    try {
+      await backend.posts.setBookmark(postId, save);
+      // Tell the student it worked: the little icon alone is easy to miss.
+      show(save ? { title: 'Saved', body: 'Find it under Profile > Saved posts.', tone: 'success' } : { title: 'Removed from saved' });
+    } catch (e) {
+      show({ title: 'Could not update your saved posts', body: e instanceof Error ? e.message : undefined, tone: 'alert' });
+    }
   },
 
   addComment: async (postId, text) => {

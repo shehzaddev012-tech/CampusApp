@@ -8,7 +8,6 @@ import { SignInScreen } from '../features/auth/SignInScreen';
 import { SignUpScreen } from '../features/auth/SignUpScreen';
 import { VerifyCodeScreen } from '../features/auth/VerifyCodeScreen';
 import { PendingApprovalScreen } from '../features/join/PendingApprovalScreen';
-import { SelectUniversityScreen } from '../features/join/SelectUniversityScreen';
 import { StudentDetailsScreen } from '../features/join/StudentDetailsScreen';
 import { SplashScreen } from '../features/SplashScreen';
 import { useAppHydrated, useAppStore } from '../store/appStore';
@@ -38,7 +37,6 @@ function AuthNavigator() {
 function JoinNavigator() {
   return (
     <JoinStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-      <JoinStack.Screen name="SelectUniversity" component={SelectUniversityScreen} />
       <JoinStack.Screen name="StudentDetails" component={StudentDetailsScreen} />
     </JoinStack.Navigator>
   );

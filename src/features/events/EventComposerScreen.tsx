@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Lock } from 'lucide-react-native';
 
 import { Button, Card, Chip, EmptyState, Input, PressableScale, Text, TopBar } from '../../components/ui';
 import type { AppStackParamList } from '../../navigation/types';
+import { backend } from '../../services';
 import { useEvents } from '../../store/eventStore';
 import { useSession } from '../../store/sessionStore';
 import { manageableSocieties, useSocieties } from '../../store/societyStore';
@@ -13,6 +14,7 @@ import { useToast } from '../../store/toastStore';
 import { GUTTER, PALETTE, categoryColor, radius, useTheme } from '../../theme';
 import { EventCategory, canCreateEvents } from '../../types/domain';
 import { DAY, HOUR, dayNumber, timeLabel, weekdayShort } from '../../utils/eventTime';
+import { minHint } from '../../utils/minHint';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'EventComposer'>;
 
@@ -27,29 +29,51 @@ function startOfDay(offsetDays: number): number {
   return d.getTime() + offsetDays * DAY;
 }
 
-export function EventComposerScreen({ navigation }: Props) {
+export function EventComposerScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const membership = useSession(s => s.membership);
   const university = useSession(s => s.university);
   const create = useEvents(s => s.createEvent);
+  const editing = useEvents(s => s.events.find(e => e.id === route.params?.eventId));
+  const isEdit = !!route.params?.eventId;
   const societies = useSocieties(s => s.societies);
   const show = useToast(s => s.show);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('Social');
-  const [dayOffset, setDayOffset] = useState(1);
-  const [hour, setHour] = useState(16);
-  const [duration, setDuration] = useState(2);
+  const first = editing ? new Date(editing.startsAt) : null;
+  const [dayStart, setDayStart] = useState(first ? new Date(first.getFullYear(), first.getMonth(), first.getDate()).getTime() : startOfDay(1));
+  const [hour, setHour] = useState(first ? first.getHours() : 16);
+  const [duration, setDuration] = useState(editing ? Math.max(1, Math.round((editing.endsAt - editing.startsAt) / HOUR)) : 2);
   const [venue, setVenue] = useState('');
   const [blurb, setBlurb] = useState('');
   const [capacity, setCapacity] = useState('');
   const [volunteers, setVolunteers] = useState(0);
-  const [isPublic, setIsPublic] = useState(false);
   const [busy, setBusy] = useState(false);
   const [societyId, setSocietyId] = useState<string | null>(null);
 
-  const days = useMemo(() => Array.from({ length: 14 }, (_, i) => startOfDay(i)), []);
+  // The next two weeks, plus the event's own day when it is older than that.
+  const days = useMemo(() => {
+    const list = Array.from({ length: 14 }, (_, i) => startOfDay(i));
+    return list.includes(dayStart) ? list : [dayStart, ...list].sort((a, b) => a - b);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const hours = START_HOURS.includes(hour) ? START_HOURS : [...START_HOURS, hour].sort((a, b) => a - b);
+  const durations = DURATIONS.includes(duration) ? DURATIONS : [...DURATIONS, duration].sort((a, b) => a - b);
+
+  // Fill the form once, with the event being changed.
+  const filled = useRef(false);
+  useEffect(() => {
+    if (editing && !filled.current) {
+      filled.current = true;
+      setTitle(editing.title);
+      setCategory(editing.category);
+      setVenue(editing.venue);
+      setBlurb(editing.blurb);
+      setCapacity(editing.capacity === null ? '' : String(editing.capacity));
+    }
+  }, [editing]);
 
   if (!membership || !canCreateEvents(membership.role)) {
     return (
@@ -61,7 +85,7 @@ export function EventComposerScreen({ navigation }: Props) {
   }
 
   // A society head organises for one of their societies; admins may organise for a society or as the university.
-  const isAdmin = membership.role === 'uni_admin' || membership.role === 'dept_admin';
+  const isAdmin = membership.role === 'uni_admin';
   const mine = manageableSocieties(societies, isAdmin);
   const society = mine.find(s => s.id === societyId) ?? (!isAdmin && mine.length === 1 ? mine[0] : undefined);
   const organizer =
@@ -69,21 +93,31 @@ export function EventComposerScreen({ navigation }: Props) {
       ? society.name
       : membership.role === 'society_head'
       ? 'Choose a society'
-      : membership.role === 'dept_admin'
-      ? `${membership.department} Department`
       : `${university?.name ?? 'University'} Administration`;
 
-  const startsAt = startOfDay(dayOffset) + hour * HOUR;
+  const startsAt = dayStart + hour * HOUR;
   const endsAt = startsAt + duration * HOUR;
   const seats = capacity.trim() === '' ? null : parseInt(capacity, 10);
   const capacityOk = seats === null || (Number.isFinite(seats) && seats >= 1 && seats <= 20000);
-  const valid = title.trim().length >= 3 && venue.trim().length >= 2 && blurb.trim().length >= 10 && capacityOk && (isAdmin || !!society);
+  const valid = title.trim().length >= 3 && venue.trim().length >= 2 && blurb.trim().length >= 10 && capacityOk && (isEdit || isAdmin || !!society);
 
   const publish = async () => {
     if (!valid || busy) {
       return;
     }
     setBusy(true);
+    if (isEdit && route.params?.eventId) {
+      try {
+        await backend.events.update(route.params.eventId, { title: title.trim(), blurb: blurb.trim(), venue: venue.trim(), category, startsAt, endsAt, capacity: seats });
+        show({ title: 'Event updated', tone: 'success' });
+        navigation.goBack();
+      } catch (e) {
+        show({ title: 'Could not save', body: e instanceof Error ? e.message : undefined, tone: 'alert' });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const id = await create({
       title: title.trim(),
       organizer: society ? undefined : organizer,
@@ -95,7 +129,7 @@ export function EventComposerScreen({ navigation }: Props) {
       endsAt,
       capacity: seats,
       volunteersNeeded: volunteers,
-      isPublic,
+      isPublic: false,
     });
     setBusy(false);
     if (id) {
@@ -106,12 +140,14 @@ export function EventComposerScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <TopBar close title="New event" onBack={() => navigation.goBack()} />
+      <TopBar close title={isEdit ? 'Edit event' : 'New event'} onBack={() => navigation.goBack()} />
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
-        <Text variant="caption" color="textSecondary">
-          Publishing as {organizer}
-        </Text>
-        {mine.length > (isAdmin ? 0 : 1) ? (
+        {isEdit ? null : (
+          <Text variant="caption" color="textSecondary">
+            Publishing as {organizer}
+          </Text>
+        )}
+        {!isEdit && mine.length > (isAdmin ? 0 : 1) ? (
           <View style={[styles.chips, styles.societyChips]}>
             {isAdmin ? <Chip label={` Administration`} selected={!society} onPress={() => setSocietyId(null)} /> : null}
             {mine.map(s => (
@@ -119,14 +155,14 @@ export function EventComposerScreen({ navigation }: Props) {
             ))}
           </View>
         ) : null}
-        {!isAdmin && mine.length === 0 ? (
+        {!isEdit && !isAdmin && mine.length === 0 ? (
           <Text variant="small" color="danger" style={styles.societyChips}>
             You do not head a society yet. Ask an admin to make you a head.
           </Text>
         ) : null}
 
         <View style={styles.field}>
-          <Input label="Event name" placeholder="e.g. Spring Music Night" value={title} onChangeText={setTitle} maxLength={80} />
+          <Input label="Event name" placeholder="e.g. Spring Music Night" value={title} onChangeText={setTitle} maxLength={80} hint={minHint(title, 3)} />
         </View>
 
         <Text variant="smallStrong" style={styles.label}>
@@ -142,12 +178,12 @@ export function EventComposerScreen({ navigation }: Props) {
           Date
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.bleedContent}>
-          {days.map((ms, i) => {
-            const active = dayOffset === i;
+          {days.map(ms => {
+            const active = dayStart === ms;
             return (
               <PressableScale
                 key={ms}
-                onPress={() => setDayOffset(i)}
+                onPress={() => setDayStart(ms)}
                 scaleTo={0.95}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
@@ -159,7 +195,7 @@ export function EventComposerScreen({ navigation }: Props) {
                   {dayNumber(ms)}
                 </Text>
                 <Text variant="caption" color={active ? PALETTE.green : 'textSecondary'}>
-                  {i === 0 ? 'Today' : weekdayShort(ms)}
+                  {ms === startOfDay(0) ? 'Today' : weekdayShort(ms)}
                 </Text>
               </PressableScale>
             );
@@ -170,7 +206,7 @@ export function EventComposerScreen({ navigation }: Props) {
           Starts at
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.bleedContent}>
-          {START_HOURS.map(h => (
+          {hours.map(h => (
             <Chip key={h} label={timeLabel(startOfDay(0) + h * HOUR)} selected={hour === h} onPress={() => setHour(h)} />
           ))}
         </ScrollView>
@@ -179,7 +215,7 @@ export function EventComposerScreen({ navigation }: Props) {
           Duration
         </Text>
         <View style={styles.chips}>
-          {DURATIONS.map(d => (
+          {durations.map(d => (
             <Chip key={d} label={`${d} h`} selected={duration === d} onPress={() => setDuration(d)} />
           ))}
         </View>
@@ -188,10 +224,10 @@ export function EventComposerScreen({ navigation }: Props) {
         </Text>
 
         <View style={styles.field}>
-          <Input label="Venue" placeholder="e.g. Main Auditorium" value={venue} onChangeText={setVenue} maxLength={60} />
+          <Input label="Venue" placeholder="e.g. Main Auditorium" value={venue} onChangeText={setVenue} maxLength={60} hint={minHint(venue, 2)} />
         </View>
         <View style={styles.field}>
-          <Input label="About" placeholder="What happens, who it is for, what to bring." value={blurb} onChangeText={setBlurb} multiline maxLength={600} />
+          <Input label="About" placeholder="What happens, who it is for, what to bring." value={blurb} onChangeText={setBlurb} multiline maxLength={600} hint={minHint(blurb, 10, 600)} />
         </View>
         <View style={styles.field}>
           <Input
@@ -204,29 +240,23 @@ export function EventComposerScreen({ navigation }: Props) {
           />
         </View>
 
-        <Text variant="smallStrong" style={styles.label}>
-          Volunteers needed
-        </Text>
-        <View style={styles.chips}>
-          {VOLUNTEERS.map(v => (
-            <Chip key={v} label={v === 0 ? 'None' : String(v)} selected={volunteers === v} onPress={() => setVolunteers(v)} />
-          ))}
-        </View>
-
-        <Card padding={14} style={styles.public}>
-          <View style={styles.publicRow}>
-            <View style={styles.publicText}>
-              <Text variant="bodyStrong">Open to other universities</Text>
-              <Text variant="small" color="textSecondary">
-                Lets students from other campuses discover this event.
-              </Text>
+        {isEdit ? null : (
+          <>
+            <Text variant="smallStrong" style={styles.label}>
+              Volunteers needed
+            </Text>
+            <View style={styles.chips}>
+              {VOLUNTEERS.map(v => (
+                <Chip key={v} label={v === 0 ? 'None' : String(v)} selected={volunteers === v} onPress={() => setVolunteers(v)} />
+              ))}
             </View>
-            <Switch value={isPublic} onValueChange={setIsPublic} trackColor={{ false: colors.border, true: colors.primary }} thumbColor={isPublic ? '#14231D' : '#FFFFFF'} />
-          </View>
-        </Card>
+          </>
+        )}
+
+
 
         <View style={styles.cta}>
-          <Button title="Publish event" onPress={publish} loading={busy} disabled={!valid} />
+          <Button title={isEdit ? 'Save changes' : 'Publish event'} onPress={publish} loading={busy} disabled={!valid} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -244,8 +274,5 @@ const styles = StyleSheet.create({
   bleedContent: { paddingHorizontal: GUTTER, gap: 8 },
   dayPill: { width: 58, height: 64, borderRadius: radius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   summary: { marginTop: 10 },
-  public: { marginTop: 24 },
-  publicRow: { flexDirection: 'row', alignItems: 'center' },
-  publicText: { flex: 1, marginRight: 12 },
   cta: { marginTop: 28 },
 });

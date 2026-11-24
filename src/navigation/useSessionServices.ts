@@ -1,10 +1,9 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 
 import { backend } from '../services';
 import { useEvents } from '../store/eventStore';
 import { useFeed } from '../store/feedStore';
 import { useAlbums } from '../store/albumStore';
-import { usePoints } from '../store/pointsStore';
 import { useNotifications } from '../store/notificationStore';
 import { useSocieties } from '../store/societyStore';
 import { useSession } from '../store/sessionStore';
@@ -27,7 +26,6 @@ export function useSessionServices() {
     useNotifications.getState().start();
     useSocieties.getState().start();
     useAlbums.getState().start();
-    usePoints.getState().start();
 
     useNotifications
       .getState()
@@ -44,7 +42,6 @@ export function useSessionServices() {
       useNotifications.getState().stop();
       useSocieties.getState().stop();
       useAlbums.getState().stop();
-      usePoints.getState().stop();
     };
   }, [uid, role]);
 }

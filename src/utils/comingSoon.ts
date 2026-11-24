@@ -2,7 +2,7 @@ import { Alert } from 'react-native';
 
 /** Placeholder for features that arrive in later modules. */
 export function comingSoon(feature: string) {
-  Alert.alert(feature, 'This feature arrives in an upcoming module of CampusHub.');
+  Alert.alert(feature, 'This feature arrives in an upcoming update of IAC Campus.');
 }
 
 export function greeting(date = new Date()): string {

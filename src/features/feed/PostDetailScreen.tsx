@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowUp, Bookmark, Eye, Heart, MessageCircle, SearchX, Trash2 } from 'lucide-react-native';
+import { ArrowUp, Bookmark, BookmarkCheck, Eye, Heart, MessageCircle, SearchX, Trash2 } from 'lucide-react-native';
 
-import { Avatar, Badge, EmptyState, IconButton, PressableScale, Text, TopBar } from '../../components/ui';
+import { Avatar, Badge, EmptyState, IconButton, PressableScale, Text, TopBar, UniversityLogo } from '../../components/ui';
 import type { AppStackParamList } from '../../navigation/types';
 import { useFeed, watchComments } from '../../store/feedStore';
 import { useSession } from '../../store/sessionStore';
@@ -60,7 +60,7 @@ export function PostDetailScreen({ navigation, route }: Props) {
   const meta = kindMeta(post.kind, colors);
   const liked = !!userState.liked[post.id];
   const saved = !!userState.bookmarked[post.id];
-  const isAdmin = membership?.role === 'uni_admin' || membership?.role === 'dept_admin';
+  const isAdmin = membership?.role === 'uni_admin';
   const canSend = text.trim().length > 0 && !sending;
   const canDeletePost = isAdmin || post.authorId === membership?.uid;
 
@@ -111,7 +111,7 @@ export function PostDetailScreen({ navigation, route }: Props) {
         right={
           <View style={styles.topActions}>
             {canDeletePost ? <IconButton icon={Trash2} onPress={deletePost} accessibilityLabel="Delete update" /> : null}
-            <IconButton icon={Bookmark} onPress={() => toggleBookmark(post.id)} accessibilityLabel={saved ? 'Remove from saved' : 'Save post'} />
+            <IconButton icon={saved ? BookmarkCheck : Bookmark} onPress={() => toggleBookmark(post.id)} accessibilityLabel={saved ? 'Remove from saved' : 'Save post'} />
           </View>
         }
       />
@@ -132,7 +132,8 @@ export function PostDetailScreen({ navigation, route }: Props) {
         </Text>
 
         <View style={styles.author}>
-          <Avatar name={post.source} size={40} square />
+          {/* The university's own notices carry the university seal; a society or a student keeps their initials. */}
+          {post.authorRole === 'uni_admin' ? <UniversityLogo size={40} /> : <Avatar name={post.source} size={40} square />}
           <View style={styles.authorText}>
             <Text variant="bodyStrong" numberOfLines={1}>
               {post.source}

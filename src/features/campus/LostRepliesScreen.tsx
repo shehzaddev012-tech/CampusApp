@@ -45,7 +45,7 @@ export function LostRepliesScreen({ navigation, route }: Props) {
             <View style={styles.text}>
               <Text variant="bodyStrong">{item.name}</Text>
               <Text variant="small" color="textSecondary">
-                {item.department} · Batch {item.batch}
+                {item.department}
               </Text>
             </View>
             <Text variant="caption" color="textTertiary">

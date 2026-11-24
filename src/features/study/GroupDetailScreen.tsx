@@ -119,7 +119,7 @@ export function GroupDetailScreen({ navigation, route }: Props) {
                   onPress={() =>
                     backend.chat
                       .room('group', group.id)
-                      .then(r => navigation.navigate('Chat', { chatId: r.id, title: r.title, kind: 'group' }))
+                      .then(r => navigation.navigate('Chat', { chatId: r.id, title: r.title, kind: 'group', targetId: group.id }))
                       .catch(e => show({ title: 'Could not open the chat', body: e instanceof Error ? e.message : undefined, tone: 'alert' }))
                   }
                 />
@@ -148,7 +148,7 @@ export function GroupDetailScreen({ navigation, route }: Props) {
                       {m.name}
                     </Text>
                     <Text variant="caption" color="textTertiary">
-                      {m.department} · Batch {m.batch}
+                      {m.department}
                     </Text>
                   </View>
                   {m.isCreator ? <Badge label="Started it" tone="ink" /> : null}

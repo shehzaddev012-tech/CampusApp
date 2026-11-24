@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { ApiError } from '../../services/api/http';
 import { useToast } from '../../store/toastStore';
 import { GUTTER, useTheme } from '../../theme';
 import { FormError } from '../auth/AuthPage';
+import { minHint } from '../../utils/minHint';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'GroupForm'>;
 
@@ -50,7 +51,7 @@ export function GroupFormScreen({ navigation }: Props) {
     <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.background }]} behavior="padding">
       <TopBar close title="Start a study group" onBack={() => navigation.goBack()} />
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
-        <Input label="Group name" placeholder="e.g. CS201 exam prep" value={title} onChangeText={setTitle} maxLength={80} />
+        <Input label="Group name" placeholder="e.g. CS201 exam prep" value={title} onChangeText={setTitle} maxLength={80} hint={minHint(title, 3)} />
         <View style={styles.field}>
           <Input label="Course (optional)" placeholder="e.g. CS201" value={course} onChangeText={setCourse} autoCapitalize="characters" maxLength={60} />
         </View>

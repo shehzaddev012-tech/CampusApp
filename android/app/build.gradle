@@ -90,6 +90,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Android refuses plain http in release builds. For a test build against an API on your own network, build
+        // with -PallowCleartext=true. A real release talks to an https address and leaves this off.
+        // (Own placeholder: the React Native plugin forces `usesCleartextTraffic` to false for release.)
+        manifestPlaceholders = [allowCleartextTraffic: (project.findProperty('allowCleartext') ?: 'false').toString()]
     }
     signingConfigs {
         debug {
@@ -102,6 +106,7 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            manifestPlaceholders = [allowCleartextTraffic: 'true'] // Metro and the local API run over http
         }
         release {
             // Caution! In production, you need to generate your own keystore file.

@@ -21,9 +21,9 @@ export function PendingApprovalScreen() {
 
   const confirmLeave = async () => {
     const ok = await confirm({
-      title: rejected ? 'Choose another university?' : 'Cancel this request?',
-      message: 'Your request will be removed and you can pick a different university.',
-      confirmLabel: rejected ? 'Choose another' : 'Cancel request',
+      title: rejected ? 'Send a new request?' : 'Cancel this request?',
+      message: 'Your request will be removed and you can send it again with the right details.',
+      confirmLabel: rejected ? 'Start again' : 'Cancel request',
       cancelLabel: 'Keep',
     });
     if (ok) {
@@ -65,14 +65,13 @@ export function PendingApprovalScreen() {
         <Card style={styles.card} padding={4}>
           <Row label="University" value={university?.fullName ?? membership.universityId} />
           <Row label="Student ID" value={membership.studentId} />
-          <Row label="Department" value={membership.department} />
-          <Row label="Batch" value={membership.batch} last />
+          <Row label="School" value={membership.department} last />
         </Card>
       ) : null}
 
       <View style={styles.actions}>
         <Button
-          title={rejected ? 'Choose another university' : 'Cancel request'}
+          title={rejected ? 'Send a new request' : 'Cancel request'}
           variant="soft"
           onPress={confirmLeave}
         />

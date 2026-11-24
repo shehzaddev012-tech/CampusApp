@@ -1,0 +1,11 @@
+<resources>
+
+    <!-- Android 12+ draws its own launch screen: use the same ink background and mark instead of the default. -->
+    <style name="LaunchTheme" parent="AppTheme">
+        <item name="android:windowSplashScreenBackground">@color/launch_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="android:statusBarColor">@color/launch_background</item>
+        <item name="android:navigationBarColor">@color/launch_background</item>
+    </style>
+
+</resources>

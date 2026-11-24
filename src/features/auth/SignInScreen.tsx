@@ -132,7 +132,7 @@ export function SignInScreen({ navigation }: Props) {
 
           <View style={styles.switchRow}>
             <Text variant="body" color="textSecondary">
-              New to CampusHub?{' '}
+              New to IAC Campus?{' '}
             </Text>
             <Pressable accessibilityRole="button" hitSlop={10} onPress={() => navigation.navigate('SignUp')}>
               <Text variant="bodyStrong">Create account</Text>

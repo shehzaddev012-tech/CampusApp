@@ -22,7 +22,6 @@ interface JoinInput {
   university: University;
   studentId: string;
   department: string;
-  batch: string;
 }
 
 interface SessionState {
@@ -42,6 +41,8 @@ interface SessionState {
   leaveUniversity: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   clearError: () => void;
+  /** After editing my profile: show the new name or picture right away. */
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 let started = false;
@@ -138,6 +139,7 @@ export const useSession = create<SessionState>()((set, get) => {
     },
 
     clearError: () => set({ error: null }),
+    updateUser: patch => set(s => (s.user ? { user: { ...s.user, ...patch } } : {})),
   };
 });
 

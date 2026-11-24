@@ -1,6 +1,5 @@
-import { Alert } from 'react-native';
-
 import { backend } from '../services';
+import { useReportDialog } from '../store/reportStore';
 import { useToast } from '../store/toastStore';
 import type { ReportReason, ReportTarget } from '../types/domain';
 
@@ -18,11 +17,8 @@ export function reportContent(targetType: ReportTarget, targetId: string, what: 
       show({ title: 'Could not send the report', body: e instanceof Error ? e.message : undefined, tone: 'alert' });
     }
   };
-  Alert.alert(`Report this ${what}?`, 'Why are you reporting it?', [
-    { text: 'Spam', onPress: () => send('spam') },
-    { text: 'Inappropriate', onPress: () => send('inappropriate') },
-    { text: 'Scam or fake', onPress: () => send('scam') },
-  ]);
+  // Our own popup (not Alert): Android's Alert shows only 3 buttons, which hid "Cancel".
+  useReportDialog.getState().open(what, send);
 }
 
 export const rs = (n: number): string => (n === 0 ? 'Free' : `Rs ${n.toLocaleString('en-US')}`);

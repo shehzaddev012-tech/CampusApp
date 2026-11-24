@@ -25,6 +25,7 @@ const WHAT: Record<ReportTarget, string> = {
   photo: 'Photo',
   message: 'Message',
   user: 'Student',
+  story: 'Story',
 };
 const REMOVE: Record<ReportTarget, { button: string; message: string }> = {
   note: { button: 'Hide it', message: 'The notes are hidden from students.' },
@@ -34,6 +35,7 @@ const REMOVE: Record<ReportTarget, { button: string; message: string }> = {
   lost_item: { button: 'Delete it', message: 'The post is deleted.' },
   photo: { button: 'Delete it', message: 'The photo is deleted for everyone.' },
   message: { button: 'Delete it', message: 'The message is deleted.' },
+  story: { button: 'Delete it', message: 'The story is deleted.' },
   user: { button: 'Suspend them', message: 'The student is suspended and signed out. You can approve them again later in Members.' },
 };
 

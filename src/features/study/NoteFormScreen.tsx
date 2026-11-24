@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,6 +14,7 @@ import { useToast } from '../../store/toastStore';
 import { GUTTER, useTheme } from '../../theme';
 import { NOTE_KINDS, type NoteKind, type PickedPhoto } from '../../types/domain';
 import { FormError } from '../auth/AuthPage';
+import { minHint } from '../../utils/minHint';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'NoteForm'>;
 
@@ -73,7 +74,7 @@ export function NoteFormScreen({ navigation }: Props) {
     <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.background }]} behavior="padding">
       <TopBar close title="Share notes" onBack={() => navigation.goBack()} />
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
-        <Input label="Title" placeholder="e.g. Data Structures: Week 1" value={title} onChangeText={setTitle} maxLength={100} />
+        <Input label="Title" placeholder="e.g. Data Structures: Week 1" value={title} onChangeText={setTitle} maxLength={100} hint={minHint(title, 3)} />
         <View style={styles.field}>
           <Input label="Course" placeholder="e.g. CS201" value={course} onChangeText={setCourse} autoCapitalize="characters" maxLength={30} />
         </View>

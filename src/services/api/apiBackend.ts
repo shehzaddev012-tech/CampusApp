@@ -1,18 +1,14 @@
-import { askNotificationPermission, getNotificationPermission } from '../push/permission';
+﻿import { askNotificationPermission, getNotificationPermission } from '../push/permission';
 import { deleteFcmToken, getFcmToken } from '../push/fcm';
 import { API_URL } from '../../config/env';
 import type {
   AdminMember,
-  Leaderboard,
+  AdminStats,
+  EventAttendee,
   LostItem,
   LostReply,
-  PointsSummary,
-  Redemption,
-  Reward,
-  RewardsView,
   StudentCard,
   CardVerification,
-  WaitingRedemption,
   Album,
   AlbumView,
   Photo,
@@ -32,9 +28,10 @@ import type {
   University,
   Unsubscribe,
 } from '../../types/domain';
-import type { AppNotification, ChatMessage, ChatSummary, Person, Book, BookInterested, CvData, Job, MediaPicture, ModerationReport, NoteDetail, NotesList, StudyGroup, StudyGroupDetail, StudyNote } from '../../types/domain';
+import type { ChatGroupInfo, ChatPresence, ChatThread, Story, StoryPerson, StoryViewer, AppNotification, ChatMessage, ChatSummary, Person, PersonProfile, Book, BookInterested, CvData, Job, MediaPicture, ModerationReport, NoteDetail, NotesList, StudyGroup, StudyGroupDetail, StudyNote } from '../../types/domain';
 import type { Backend, EventsSnapshot, FeedSnapshot, NotificationsSnapshot } from '../types';
 import { getGoogleIdToken, googleSignOut } from './google';
+import { isRealtimeLive, onChatNudge, onTypingEvent, sendTypingEvent, startRealtime, stopRealtime } from './realtime';
 import { ApiError, api, clearSession, currentRefreshToken, hasStoredSession, onSessionEnded, saveSession } from './http';
 import { Topic, TopicMap } from './topic';
 
@@ -78,10 +75,13 @@ const societiesTopic = new Topic<Society[]>(async () => (await api<{ societies: 
 const absPhoto = (p: Photo): Photo => ({ ...p, url: `${API_URL}${p.url}`, thumbUrl: `${API_URL}${p.thumbUrl}` });
 const absMedia = (m: MediaPicture): MediaPicture => ({ ...m, url: `${API_URL}${m.url}`, thumbUrl: `${API_URL}${m.thumbUrl}` });
 const absBook = (b: Book): Book => ({ ...b, photos: b.photos.map(absMedia) });
-const absAlbum = (a: Album): Album => (a.cover ? { ...a, cover: { ...a.cover, thumbUrl: `${API_URL}${a.cover.thumbUrl}` } } : a);
+/** The server sends paths; the app needs full addresses to open pictures and downloads. */
+const absChat = (m: ChatMessage): ChatMessage =>
+  m.attachment ? { ...m, attachment: { ...m.attachment, url: `${API_URL}${m.attachment.url}`, thumbUrl: m.attachment.thumbUrl ? `${API_URL}${m.attachment.thumbUrl}` : null } } : m;
+
+const absAlbum =(a: Album): Album => (a.cover ? { ...a, cover: { ...a.cover, thumbUrl: `${API_URL}${a.cover.thumbUrl}` } } : a);
 const albumsTopic = new Topic<Album[]>(async () => (await api<{ albums: Album[] }>('GET', '/v1/albums')).albums.map(absAlbum), 20_000);
 
-const pointsTopic = new Topic<PointsSummary>(() => api<PointsSummary>('GET', '/v1/points/me'), 30_000);
 
 const commentTopics = new TopicMap<PostComment[]>(
   id => new Topic(async () => (await api<{ comments: PostComment[] }>('GET', `/v1/posts/${id}/comments`)).comments, 8_000),
@@ -89,7 +89,7 @@ const commentTopics = new TopicMap<PostComment[]>(
 
 /** Forget cached data when the signed-in person changes. */
 function resetData() {
-  [meTopic, feedTopic, eventsTopic, myPassesTopic, pendingPassesTopic, notificationsTopic, societiesTopic, albumsTopic, pointsTopic].forEach(t => t.reset());
+  [meTopic, feedTopic, eventsTopic, myPassesTopic, pendingPassesTopic, notificationsTopic, societiesTopic, albumsTopic].forEach(t => t.reset());
   commentTopics.resetAll();
 }
 
@@ -98,7 +98,15 @@ function resetData() {
 let currentUser: AuthUser | null = null;
 let started = false;
 const authListeners = new Set<(u: AuthUser | null) => void>();
-const emitAuth = () => authListeners.forEach(cb => cb(currentUser));
+const emitAuth = () => {
+  // The live connection runs exactly while someone is signed in.
+  if (currentUser && currentUser.uid !== 'offline') {
+    startRealtime();
+  } else {
+    stopRealtime();
+  }
+  authListeners.forEach(cb => cb(currentUser));
+};
 
 async function startSession(): Promise<void> {
   if (started) {
@@ -137,6 +145,19 @@ async function adoptSession(res: SessionResponse): Promise<AuthUser> {
 }
 
 export const apiBackend: Backend = {
+  profile: {
+    async rename(name) {
+      await api('PATCH', '/v1/me', { name });
+    },
+    async setPhoto(photo) {
+      const form = new FormData();
+      form.append('photos', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
+      return (await api<{ photoUrl: string }>('POST', '/v1/me/photo', form)).photoUrl;
+    },
+    async removePhoto() {
+      await api('DELETE', '/v1/me/photo');
+    },
+  },
   auth: {
     async listDevAccounts() {
       try {
@@ -223,8 +244,8 @@ export const apiBackend: Backend = {
       return meTopic.last ?? { membership: null, university: null };
     },
     subscribeMe: cb => meTopic.subscribe(cb),
-    async submitJoinRequest({ university, studentId, department, batch }) {
-      await api('POST', '/v1/membership', { universityId: university.id, studentId, department, batch });
+    async submitJoinRequest({ university, studentId, department }) {
+      await api('POST', '/v1/membership', { universityId: university.id, studentId, department });
       await meTopic.refresh();
     },
     async leaveUniversity() {
@@ -246,6 +267,7 @@ export const apiBackend: Backend = {
       return (await api<{ members: AdminMember[] }>('GET', `/v1/admin/members${status ? `?status=${status}` : ''}`)).members;
     },
     decide: (userId, patch) => api<AdminMember>('PATCH', `/v1/admin/members/${userId}`, patch),
+    stats: () => api<AdminStats>('GET', '/v1/admin/stats'),
   },
 
   posts: {
@@ -283,6 +305,17 @@ export const apiBackend: Backend = {
 
   events: {
     subscribeEvents: cb => eventsTopic.subscribe(cb),
+    async attendees(eventId) {
+      return (await api<{ attendees: EventAttendee[] }>('GET', `/v1/events/${eventId}/attendees`)).attendees;
+    },
+    async update(eventId, patch) {
+      await api('PATCH', `/v1/events/${eventId}`, patch);
+      await eventsTopic.refresh();
+    },
+    async remove(eventId) {
+      await api('DELETE', `/v1/events/${eventId}`);
+      await eventsTopic.refresh();
+    },
     async createEvent(input) {
       const created = await api<CampusEvent>('POST', '/v1/events', input);
       await eventsTopic.refresh();
@@ -394,37 +427,6 @@ export const apiBackend: Backend = {
       await albumsTopic.refresh();
     },
     setLike: (photoId, liked) => api<{ liked: boolean; likeCount: number }>(liked ? 'PUT' : 'DELETE', `/v1/photos/${photoId}/like`),
-  },
-
-  points: {
-    subscribeMe: cb => pointsTopic.subscribe(cb),
-    async setVisibility(visible) {
-      await api('PATCH', '/v1/points/visibility', { visible });
-      await pointsTopic.refresh();
-    },
-    leaderboard: (scope, period) => api<Leaderboard>('GET', `/v1/leaderboard?scope=${scope}&period=${period}`),
-  },
-
-  rewards: {
-    list: () => api<RewardsView>('GET', '/v1/rewards'),
-    create: input => api<Reward>('POST', '/v1/rewards', input),
-    update: (id, patch) => api<Reward>('PATCH', `/v1/rewards/${id}`, patch),
-    async redeem(id) {
-      const r = await api<{ id: string; code: string; title: string; cost: number; balance: number }>('POST', `/v1/rewards/${id}/redeem`);
-      await pointsTopic.refresh();
-      return r;
-    },
-    async mine() {
-      return (await api<{ redemptions: Redemption[] }>('GET', '/v1/redemptions/mine')).redemptions;
-    },
-    async cancel(id) {
-      await api('POST', `/v1/redemptions/${id}/cancel`);
-      await pointsTopic.refresh();
-    },
-    async waiting() {
-      return (await api<{ redemptions: WaitingRedemption[] }>('GET', '/v1/redemptions')).redemptions;
-    },
-    collect: code => api<{ title: string; student: string }>('POST', '/v1/redemptions/collect', { code }),
   },
 
   lostFound: {
@@ -562,19 +564,90 @@ export const apiBackend: Backend = {
       await api('POST', `/v1/admin/reports/${id}`, { action });
     },
   },
+  stories: {
+    async list() {
+      const r = await api<{ people: StoryPerson[] }>('GET', '/v1/stories');
+      return r.people.map(p => ({ ...p, stories: p.stories.map(s => ({ ...s, image: s.image ? absMedia(s.image) : null })) }));
+    },
+    async post(photo, caption, bg) {
+      const form = new FormData();
+      form.append('caption', caption);
+      if (bg) {
+        form.append('bg', bg);
+      }
+      if (photo) {
+        form.append('photos', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
+      }
+      const s = await api<Story>('POST', '/v1/stories', form);
+      return { ...s, image: s.image ? absMedia(s.image) : null };
+    },
+    async markSeen(id) {
+      await api('POST', `/v1/stories/${id}/view`);
+    },
+    async viewers(id) {
+      return (await api<{ viewers: StoryViewer[] }>('GET', `/v1/stories/${id}/viewers`)).viewers;
+    },
+    async remove(id) {
+      await api('DELETE', `/v1/stories/${id}`);
+    },
+  },
+
   chat: {
+    onNudge: cb => onChatNudge(cb),
+    isLive: () => isRealtimeLive(),
+    createGroup: input => api<{ id: string; title: string }>('POST', '/v1/chats/groups', input),
+    groupInfo: id => api<ChatGroupInfo>('GET', `/v1/chats/groups/${id}`),
+    updateGroup: (id, patch) => api<ChatGroupInfo>('PATCH', `/v1/chats/groups/${id}`, patch),
+    addGroupMembers: (id, userIds) => api<ChatGroupInfo>('POST', `/v1/chats/groups/${id}/members`, { userIds }),
+    async removeGroupMember(id, userId) {
+      await api('DELETE', `/v1/chats/groups/${id}/members/${userId}`);
+    },
+    async setGroupAdmin(id, userId, admin) {
+      await api(admin ? 'PUT' : 'DELETE', `/v1/chats/groups/${id}/admins/${userId}`);
+    },
+    async leaveGroup(id) {
+      await api('POST', `/v1/chats/groups/${id}/leave`);
+    },
+    async deleteGroup(id) {
+      await api('DELETE', `/v1/chats/groups/${id}`);
+    },
     async list() {
       return (await api<{ chats: ChatSummary[] }>('GET', '/v1/chats')).chats;
     },
     async people(q) {
       return (await api<{ people: Person[] }>('GET', `/v1/people?q=${encodeURIComponent(q)}`)).people;
     },
+    person: userId => api<PersonProfile>('GET', `/v1/people/${userId}`),
     startDm: userId => api<{ id: string; title: string }>('POST', '/v1/chats/dm', { userId }),
     room: (kind, id) => api<{ id: string; title: string }>('GET', `/v1/chats/${kind}/${id}`),
-    async messages(id, after) {
-      return (await api<{ messages: ChatMessage[] }>('GET', `/v1/chats/${id}/messages${after ? `?after=${after}` : ''}`)).messages;
+    async messages(id) {
+      const r = await api<ChatThread>('GET', `/v1/chats/${id}/messages`);
+      return { messages: r.messages.map(absChat), receipts: r.receipts };
     },
-    send: (id, body) => api<ChatMessage>('POST', `/v1/chats/${id}/messages`, { body }),
+    async send(id, body, replyTo) {
+      return absChat(await api<ChatMessage>('POST', `/v1/chats/${id}/messages`, { body, ...(replyTo ? { replyTo } : {}) }));
+    },
+    async deleteMessage(id, messageId, scope) {
+      await api('DELETE', `/v1/chats/${id}/messages/${messageId}?for=${scope}`);
+    },
+    presence: userId => api<ChatPresence>('GET', `/v1/users/${userId}/presence`),
+    sendTyping: conversationId => sendTypingEvent(conversationId),
+    onTyping: cb => onTypingEvent(cb),
+    async sendAttachment(id, file, caption, replyTo) {
+      const form = new FormData();
+      if (caption) {
+        form.append('caption', caption);
+      }
+      if (replyTo) {
+        form.append('replyTo', replyTo);
+      }
+      form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
+      return absChat(await api<ChatMessage>('POST', `/v1/chats/${id}/attachments`, form));
+    },
+    async react(id, messageId, emoji) {
+      const path = `/v1/chats/${id}/messages/${messageId}/reaction`;
+      return absChat(await (emoji === null ? api<ChatMessage>('DELETE', path) : api<ChatMessage>('PUT', path, { emoji })));
+    },
     async markRead(id) {
       await api('POST', `/v1/chats/${id}/read`);
     },

@@ -1,4 +1,4 @@
-import type { University } from '../types/domain';
+﻿import type { University } from '../types/domain';
 
 export type AuthStackParamList = {
   Onboarding: undefined;
@@ -11,8 +11,7 @@ export type AuthStackParamList = {
 };
 
 export type JoinStackParamList = {
-  SelectUniversity: undefined;
-  StudentDetails: { university: University };
+  StudentDetails: undefined;
 };
 
 export type MainTabParamList = {
@@ -41,9 +40,14 @@ export type AppStackParamList = {
   /** Gate scanner. When `eventId` is set, tickets for other events are rejected. */
   Scanner: { eventId?: string } | undefined;
   GuestApprovals: undefined;
-  EventComposer: undefined;
+  /** Publish a new event (no id) or change one. */
+  EventComposer: { eventId?: string } | undefined;
   /** Admin: approve or reject students who asked to join. */
   Members: undefined;
+  /** Admin: the numbers and every admin tool. */
+  AdminHome: undefined;
+  /** Organiser / admin: who has a ticket and who came. */
+  EventAttendees: { eventId: string; title: string };
   SocietyDetail: { societyId: string };
   /** Create a society (no id) or edit one. */
   SocietyForm: { societyId?: string } | undefined;
@@ -54,12 +58,6 @@ export type AppStackParamList = {
   PhotoViewer: { photoId: string };
   /** Create an album (no id) or rename one. */
   AlbumForm: { albumId?: string; societyId?: string } | undefined;
-  /** My points, level, badges and recent activity. */
-  Points: undefined;
-  Leaderboard: undefined;
-  Rewards: undefined;
-  /** Admin: create a reward (no id) or change one. */
-  RewardForm: { rewardId?: string } | undefined;
   LostFound: undefined;
   LostItemForm: undefined;
   LostReplies: { itemId: string; title: string };
@@ -82,5 +80,17 @@ export type AppStackParamList = {
   Reports: undefined;
   Chats: undefined;
   NewChat: undefined;
-  Chat: { chatId: string; title: string; kind: 'dm' | 'society' | 'group'; otherUserId?: string };
+  /** Full-screen stories: everyone who posted, and which person to start at. */
+  StoryViewer: { people: import('../types/domain').StoryPerson[]; start: number };
+  AddStory: undefined;
+  /** My name and profile picture. */
+  EditProfile: undefined;
+  Privacy: undefined;
+  Chat: { chatId: string; title: string; kind: 'dm' | 'society' | 'group' | 'custom'; otherUserId?: string; photoUrl?: string | null; targetId?: string | null };
+  /** Someone's profile: photo, school, role and societies. */
+  PersonProfile: { userId: string };
+  /** Make a group chat: a name and the people to put in it. */
+  NewGroup: undefined;
+  /** Members, admins and settings of a group students made. */
+  GroupChatInfo: { chatId: string };
 };

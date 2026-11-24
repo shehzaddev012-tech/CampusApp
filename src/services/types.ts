@@ -1,20 +1,13 @@
-import type {
+﻿import type {
   AdminMember,
-  BoardPeriod,
-  BoardScope,
+  AdminStats,
+  EventAttendee,
   CardVerification,
-  Leaderboard,
   LostItem,
   LostReply,
   NewLostItemInput,
-  ChatMessage, ChatSummary, Person, Book, BookInterested, CvData, CvProfileInput, Job, JobKind, ModerationReport, NewBookInput, NewGroupInput, NewJobInput, NewNoteInput, NoteDetail, NoteKind, NotesList, ReportReason, ReportTarget, StudyGroup, StudyGroupDetail, StudyNote,
-  NewRewardInput,
-  PointsSummary,
-  Redemption,
-  Reward,
-  RewardsView,
+  Story, StoryPerson, StoryViewer, ChatGroupInfo, ChatMessage, ChatPresence, ChatThread, ChatSummary, Person, PersonProfile, Book, BookInterested, CvData, CvProfileInput, Job, JobKind, ModerationReport, NewBookInput, NewGroupInput, NewJobInput, NewNoteInput, NoteDetail, NoteKind, NotesList, ReportReason, ReportTarget, StudyGroup, StudyGroupDetail, StudyNote,
   StudentCard,
-  WaitingRedemption,
   Album,
   AlbumView,
   AppNotification,
@@ -98,6 +91,8 @@ export interface MembershipService {
 export interface AdminService {
   listMembers(status?: MemberStatus): Promise<AdminMember[]>;
   decide(userId: string, patch: { status?: MemberStatus; role?: Role }): Promise<AdminMember>;
+  /** The numbers on the admin overview. */
+  stats(): Promise<AdminStats>;
 }
 
 export interface FeedSnapshot {
@@ -144,6 +139,12 @@ export interface EventService {
   subscribePendingPasses(cb: (passes: GuestPass[]) => void): Unsubscribe;
   createGuestPass(eventId: string, guestName: string, guestPhone: string): Promise<void>;
   decideGuestPass(passId: string, approve: boolean): Promise<void>;
+  /** Organiser / admin: who has a ticket, who came. */
+  attendees(eventId: string): Promise<EventAttendee[]>;
+  /** Organiser / admin: changes the basics of an event (name, about, venue, category, time, seats). */
+  update(eventId: string, patch: { title?: string; blurb?: string; venue?: string; category?: EventCategory; startsAt?: number; endsAt?: number; capacity?: number | null }): Promise<void>;
+  /** Organiser / admin: deletes the event and its tickets. */
+  remove(eventId: string): Promise<void>;
 }
 
 export interface SocietyService {
@@ -174,28 +175,6 @@ export interface AlbumService {
   upload(albumId: string, files: PickedPhoto[]): Promise<Photo[]>;
   deletePhoto(photoId: string): Promise<void>;
   setLike(photoId: string, liked: boolean): Promise<{ liked: boolean; likeCount: number }>;
-}
-
-export interface PointsService {
-  /** My points, level, badges and recent activity (refreshed regularly). */
-  subscribeMe(cb: (me: PointsSummary) => void): Unsubscribe;
-  setVisibility(visible: boolean): Promise<void>;
-  leaderboard(scope: BoardScope, period: BoardPeriod): Promise<Leaderboard>;
-}
-
-export interface RewardService {
-  list(): Promise<RewardsView>;
-  /** Admin only. */
-  create(input: NewRewardInput): Promise<Reward>;
-  /** Admin only. */
-  update(id: string, patch: Partial<NewRewardInput> & { active?: boolean }): Promise<Reward>;
-  redeem(id: string): Promise<{ id: string; code: string; title: string; cost: number; balance: number }>;
-  mine(): Promise<Redemption[]>;
-  cancel(id: string): Promise<void>;
-  /** Admin: rewards waiting to be handed over (no codes). */
-  waiting(): Promise<WaitingRedemption[]>;
-  /** Admin: the student shows a code; this hands the reward over. */
-  collect(code: string): Promise<{ title: string; student: string }>;
 }
 
 export interface LostFoundService {
@@ -256,13 +235,40 @@ export interface ReportService {
 }
 
 export interface ChatService {
+  /** Called when the server says a chat has something new (live connection). Returns an unsubscribe. */
+  onNudge(cb: (conversationId: string) => void): Unsubscribe;
+  /** True while the live connection is up. The screens then check the server only now and then. */
+  isLive(): boolean;
   list(): Promise<ChatSummary[]>;
+  /** Groups made by students. The creator is its first admin. */
+  createGroup(input: { name: string; about: string; memberIds: string[] }): Promise<{ id: string; title: string }>;
+  groupInfo(id: string): Promise<ChatGroupInfo>;
+  updateGroup(id: string, patch: { name?: string; about?: string; onlyAdminsPost?: boolean }): Promise<ChatGroupInfo>;
+  addGroupMembers(id: string, userIds: string[]): Promise<ChatGroupInfo>;
+  removeGroupMember(id: string, userId: string): Promise<void>;
+  setGroupAdmin(id: string, userId: string, admin: boolean): Promise<void>;
+  leaveGroup(id: string): Promise<void>;
+  deleteGroup(id: string): Promise<void>;
   people(q: string): Promise<Person[]>;
+  person(userId: string): Promise<PersonProfile>;
   startDm(userId: string): Promise<{ id: string; title: string }>;
   room(kind: 'society' | 'group', id: string): Promise<{ id: string; title: string }>;
-  /** Newest 50, oldest first. Pass `after` (ms) to get only newer ones. */
-  messages(id: string, after?: number): Promise<ChatMessage[]>;
-  send(id: string, body: string): Promise<ChatMessage>;
+  /** The newest 50 messages, oldest first, and how far the others have received and read them (for the ticks). */
+  messages(id: string): Promise<ChatThread>;
+  /** `replyTo` = the id of the message being answered. */
+  send(id: string, body: string, replyTo?: string): Promise<ChatMessage>;
+  /** A picture or a document (PDF, Word, Excel, PowerPoint), with an optional caption. */
+  sendAttachment(id: string, file: PickedPhoto, caption?: string, replyTo?: string): Promise<ChatMessage>;
+  /** "For me" hides it from my view; "for everyone" (my own messages, within two days) removes its content for all. */
+  deleteMessage(id: string, messageId: string, scope: 'me' | 'everyone'): Promise<void>;
+  /** Online now, or when they were last seen. */
+  presence(userId: string): Promise<ChatPresence>;
+  /** Tells the others in the chat that I am typing (sent at most every second or so). */
+  sendTyping(conversationId: string): void;
+  /** Someone else is typing in a chat. Returns an unsubscribe. */
+  onTyping(cb: (conversationId: string, name: string) => void): Unsubscribe;
+  /** Reacts to a message with an emoji (one per person; reacting again replaces it). `null` removes my reaction. */
+  react(id: string, messageId: string, emoji: string | null): Promise<ChatMessage>;
   markRead(id: string): Promise<void>;
   block(userId: string, blocked: boolean): Promise<void>;
 }
@@ -287,7 +293,29 @@ export interface PushService {
   unregisterDevice(): Promise<void>;
 }
 
+export interface StoriesService {
+  /** Live stories of my university, grouped by person (mine first, then people I have not seen). */
+  list(): Promise<StoryPerson[]>;
+  /** A picture with an optional line, or (photo null) words only on a coloured background `bg`. */
+  post(photo: PickedPhoto | null, caption: string, bg?: string): Promise<Story>;
+  /** Tells the server I looked at it. Harmless to repeat. */
+  markSeen(id: string): Promise<void>;
+  /** Who looked at my story. */
+  viewers(id: string): Promise<StoryViewer[]>;
+  remove(id: string): Promise<void>;
+}
+
+export interface ProfileService {
+  /** Changes my display name. */
+  rename(name: string): Promise<void>;
+  /** Uploads a new profile picture and answers its address. */
+  setPhoto(photo: PickedPhoto): Promise<string>;
+  removePhoto(): Promise<void>;
+}
+
 export interface Backend {
+  profile: ProfileService;
+  stories: StoriesService;
   auth: AuthService;
   universities: UniversityService;
   membership: MembershipService;
@@ -296,8 +324,6 @@ export interface Backend {
   events: EventService;
   societies: SocietyService;
   albums: AlbumService;
-  points: PointsService;
-  rewards: RewardService;
   lostFound: LostFoundService;
   card: CardService;
   study: StudyService;

@@ -28,7 +28,7 @@ export function AlbumFormScreen({ navigation, route }: Props) {
   const societies = useSocieties(s => s.societies);
   const existing = useAlbumView(s => (s.view && s.view.album.id === albumId ? s.view.album : null));
 
-  const isAdmin = role === 'uni_admin' || role === 'dept_admin';
+  const isAdmin = role === 'uni_admin';
   const mine = manageableSocieties(societies, isAdmin);
 
   const [title, setTitle] = useState(existing?.title ?? '');

@@ -25,7 +25,7 @@ export function SocietyDetailScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const role = useSession(s => s.membership?.role);
-  const isAdmin = role === 'uni_admin' || role === 'dept_admin';
+  const isAdmin = role === 'uni_admin';
   const show = useToast(s => s.show);
 
   const [society, setSociety] = useState<SocietyDetail | null>(null);
@@ -168,7 +168,7 @@ export function SocietyDetailScreen({ navigation, route }: Props) {
                     onPress={() =>
                       backend.chat
                         .room('society', societyId)
-                        .then(r => navigation.navigate('Chat', { chatId: r.id, title: r.title, kind: 'society' }))
+                        .then(r => navigation.navigate('Chat', { chatId: r.id, title: r.title, kind: 'society', targetId: societyId }))
                         .catch(e => show({ title: 'Could not open the chat', body: e instanceof Error ? e.message : undefined, tone: 'alert' }))
                     }
                   />

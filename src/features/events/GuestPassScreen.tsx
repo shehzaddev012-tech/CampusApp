@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Phone, User, UserX } from 'lucide-react-native';
+import { Phone, Share2, User, UserX } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
+import Share from 'react-native-share';
 
 import { Badge, Button, Card, EmptyState, Input, Text, TopBar } from '../../components/ui';
 import type { AppStackParamList } from '../../navigation/types';
@@ -120,7 +121,7 @@ export function GuestPassScreen({ navigation, route }: Props) {
               Your guests
             </Text>
             {passes.map(p => (
-              <PassCard key={p.id} pass={p} universityId={membership.universityId} />
+              <PassCard key={p.id} pass={p} universityId={membership.universityId} eventTitle={event.title} />
             ))}
           </View>
         ) : null}
@@ -135,9 +136,28 @@ export function GuestPassScreen({ navigation, route }: Props) {
   );
 }
 
-function PassCard({ pass, universityId }: { pass: GuestPass; universityId: string }) {
+function PassCard({ pass, universityId, eventTitle }: { pass: GuestPass; universityId: string; eventTitle: string }) {
   const used = !!pass.checkedInAt;
   const approved = pass.status === 'approved';
+  const qr = useRef<{ toDataURL: (cb: (data: string) => void) => void } | null>(null);
+  const show = useToast(s => s.show);
+
+  // Sends the QR as a picture (WhatsApp, Messages, ...), so nobody has to take a screenshot.
+  const share = () => {
+    qr.current?.toDataURL(async data => {
+      try {
+        await Share.open({
+          url: `data:image/png;base64,${data}`,
+          type: 'image/png',
+          filename: `guest-pass-${shortCode(pass.code)}`,
+          message: `Guest pass for ${pass.guestName}: ${eventTitle}. Show this QR code at the gate. Code ${shortCode(pass.code)}.`,
+          failOnCancel: false,
+        });
+      } catch (e) {
+        show({ title: 'Could not share the pass', body: e instanceof Error ? e.message : undefined, tone: 'alert' });
+      }
+    });
+  };
   return (
     <Card padding={16} style={styles.pass}>
       <View style={styles.passHead}>
@@ -154,13 +174,24 @@ function PassCard({ pass, universityId }: { pass: GuestPass; universityId: strin
       {approved && !used ? (
         <View style={styles.qrWrap}>
           <View style={styles.qrBox}>
-            <QRCode value={encodeGuestPass(universityId, pass.eventId, pass.id, pass.code)} size={170} color="#14231D" backgroundColor="#FFFFFF" ecl="M" />
+            <QRCode
+              value={encodeGuestPass(universityId, pass.eventId, pass.id, pass.code)}
+              size={170}
+              color="#14231D"
+              backgroundColor="#FFFFFF"
+              ecl="M"
+              quietZone={12}
+              getRef={r => {
+                qr.current = r as unknown as { toDataURL: (cb: (data: string) => void) => void } | null;
+              }}
+            />
           </View>
           <Text variant="overline" color="textSecondary" style={styles.qrCode}>
             {shortCode(pass.code)}
           </Text>
+          <Button title="Share with your guest" icon={Share2} variant="soft" size="md" onPress={share} />
           <Text variant="small" color="textSecondary" align="center">
-            Send a screenshot of this code to your guest.
+            Sends the QR code as a picture.
           </Text>
         </View>
       ) : null}

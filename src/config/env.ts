@@ -11,7 +11,9 @@
  *   Leave empty until the Firebase project exists; the "Continue with Google" button stays
  *   hidden and the development sign-in is used instead.
  */
-export const API_URL = 'http://localhost:4000';
+/** Used by installed (release) builds. Replace with your https address when the API is deployed. */
+const RELEASE_API_URL = 'http://192.168.10.49:4000'; // test build (a Wi-Fi address can change: if the app cannot connect, check `ipconfig` and rebuild): the API on this computer, phone on the same Wi-Fi
+export const API_URL = __DEV__ ? 'http://localhost:4000' : RELEASE_API_URL;
 
 export const GOOGLE_WEB_CLIENT_ID = '167110503186-3pqapg00h8mggkgv5kpdr2iccenbbpgg.apps.googleusercontent.com';
 export const GOOGLE_SIGN_IN_ENABLED = GOOGLE_WEB_CLIENT_ID.length > 0;

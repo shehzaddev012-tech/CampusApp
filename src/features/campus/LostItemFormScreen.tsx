@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { useToast } from '../../store/toastStore';
 import { GUTTER, useTheme } from '../../theme';
 import type { LostKind } from '../../types/domain';
 import { FormError } from '../auth/AuthPage';
+import { minHint } from '../../utils/minHint';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LostItemForm'>;
 
@@ -57,7 +58,7 @@ export function LostItemFormScreen({ navigation }: Props) {
           ]}
         />
         <View style={styles.field}>
-          <Input label="What is it?" placeholder={kind === 'lost' ? 'e.g. Black wallet' : 'e.g. Blue water bottle'} value={title} onChangeText={setTitle} maxLength={80} />
+          <Input label="What is it?" placeholder={kind === 'lost' ? 'e.g. Black wallet' : 'e.g. Blue water bottle'} value={title} onChangeText={setTitle} maxLength={80} hint={minHint(title, 3)} />
         </View>
         <View style={styles.field}>
           <Input label="Where?" placeholder={kind === 'lost' ? 'Where did you last have it?' : 'Where did you find it?'} value={place} onChangeText={setPlace} maxLength={80} />

@@ -9,6 +9,8 @@ import { Text } from './Text';
 
 interface Props {
   title?: string;
+  /** A small line under the title (for example "online" or "typing..."). */
+  subtitle?: string;
   onBack: () => void;
   /** Use a close (X) button instead of a back arrow, for modal-style screens. */
   close?: boolean;
@@ -16,7 +18,7 @@ interface Props {
 }
 
 /** Top bar for screens pushed above the tabs. */
-export function TopBar({ title, onBack, close, right }: Props) {
+export function TopBar({ title, subtitle, onBack, close, right }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -30,9 +32,16 @@ export function TopBar({ title, onBack, close, right }: Props) {
         onPress={onBack}
         accessibilityLabel={close ? 'Close' : 'Go back'}
       />
-      <Text variant="title3" numberOfLines={1} style={styles.title}>
-        {title}
-      </Text>
+      <View style={styles.title}>
+        <Text variant="title3" numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text variant="caption" color="textSecondary" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
       <View style={styles.right}>{right}</View>
     </View>
   );

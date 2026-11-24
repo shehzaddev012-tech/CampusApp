@@ -147,6 +147,18 @@ function refreshTokens(): Promise<boolean> {
   return refreshing;
 }
 
+/** A token that is good for at least another minute (renewed first when needed), or null when signed out. */
+export async function freshAccessToken(): Promise<string | null> {
+  await ensureLoaded();
+  if (!tokens) {
+    return null;
+  }
+  if (tokens.expiresAt - Date.now() < REFRESH_MARGIN_MS) {
+    await refreshTokens();
+  }
+  return tokens?.accessToken ?? null;
+}
+
 /** Calls the API. Adds the sign-in token, refreshes it when needed, and throws `ApiError` on failure. */
 export async function api<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown, opts: { auth?: boolean } = {}): Promise<T> {
   const auth = opts.auth ?? true;

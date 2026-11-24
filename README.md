@@ -12,8 +12,8 @@ React Native (CLI) · TypeScript · Node API · PostgreSQL · Android first.
 
 - **Module 4 (Societies and photos):** societies with heads, join/leave, society-only updates and events; photo albums with real uploads from the phone, thumbnails, likes, a best shot and moderation.
 
-- **Module 8 (Admin dashboard):** a web app for administrators (`campushub-admin`): overview numbers, member approval and roles, report review, notices and alerts, job postings.
-- **Module 7 (Social):** one-to-one chat, society and study-group rooms, blocking, and reporting messages.
+- **Module 8 (Admin dashboard):** a web app for administrators (`campushub-admin`): overview numbers, member approval and roles, events (create, edit, cancel, who is coming), societies and their heads, rewards, a gate page (check-in by camera, scanner or typed code, and reward pickup), report review, notices and alerts, job postings.
+- **Module 7 (Social):** one-to-one chat (live, over a WebSocket), WhatsApp-style groups students create themselves (admins, add/remove people, leave), photos and documents in any chat, emoji reactions, society and study-group rooms, blocking, reporting messages, and campus stories (a picture and a line that disappears after 24 hours).
 - **Module 6 (Study and career):** notes and past papers (PDF or pictures), book market with photos, study groups, jobs and internships posted by admins, a CV built from verified campus records, and reporting with an admin review queue.
 - **Module 5 (Points and campus life):** points ledger, levels, weekly streak, badges, leaderboards (students, departments, societies), rewards you redeem with a code, lost & found, and a digital student card with a rotating QR that gate staff can scan.
 
@@ -57,6 +57,8 @@ src/
   config/         env.ts (API_URL, Google web client id)
 docs/             ARCHITECTURE.md, DESIGN_SYSTEM.md, ANDROID_SETUP.md, FIREBASE_SETUP.md
 ```
+
+The other two projects sit next to this one: `../campushub-api` (the server) and `../campushub-admin` (the web dashboard for administrators; `npm install` then `npm run dev`, see its README).
 
 See `docs/ARCHITECTURE.md` for how it fits together and `docs/FIREBASE_SETUP.md` for Google sign-in + push.
 

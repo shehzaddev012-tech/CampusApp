@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ConfirmHost } from './src/components/ConfirmHost';
+import { ReportHost } from './src/components/ReportHost';
 import { ToastHost } from './src/components/ToastHost';
 import { navigationRef } from './src/navigation/ref';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -37,6 +38,7 @@ function Shell() {
       <RootNavigator />
       <ToastHost />
       <ConfirmHost />
+      <ReportHost />
     </NavigationContainer>
   );
 }

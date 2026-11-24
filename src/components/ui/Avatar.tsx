@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, View } from 'react-native';
 
+import { API_URL } from '../../config/env';
 import { PALETTE, readableOn, useTheme } from '../../theme';
 import { Text } from './Text';
 
@@ -41,7 +42,8 @@ export function Avatar({ name, uri, size = 44, square, tint }: Props) {
   const { typography } = useTheme();
   const borderRadius = square ? size * 0.3 : size / 2;
   if (uri) {
-    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius }} />;
+    // Pictures people upload come as a path on our server; a Google picture is already a full address.
+    return <Image source={{ uri: uri.startsWith('/') ? `${API_URL}${uri}` : uri }} style={{ width: size, height: size, borderRadius }} />;
   }
   const bg = tint ?? colorFor(name);
   return (

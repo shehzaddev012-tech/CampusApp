@@ -69,25 +69,20 @@ export function Button({
           borderRadius: radius.lg - 2,
           height: size === 'lg' ? 52 : 44,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          opacity: isDisabled ? 0.55 : 1,
+          opacity: disabled ? 0.55 : 1,
         },
         style,
       ]}>
       <View style={styles.row}>
-        {loading ? (
-          <ActivityIndicator color={palette.fg} />
-        ) : (
-          <>
-            {Icon ? <Icon size={19} color={palette.fg} strokeWidth={2.4} /> : null}
-            <Text
-              variant="button"
-              color={palette.fg}
-              numberOfLines={1}
-              style={Icon ? styles.withIcon : undefined}>
-              {title}
-            </Text>
-          </>
-        )}
+        {/* While loading, the label stays and a small spinner takes the icon's place, so nothing jumps. */}
+        {loading ? <ActivityIndicator size="small" color={palette.fg} /> : Icon ? <Icon size={19} color={palette.fg} strokeWidth={2.4} /> : null}
+        <Text
+          variant="button"
+          color={palette.fg}
+          numberOfLines={1}
+          style={loading || Icon ? styles.withIcon : undefined}>
+          {title}
+        </Text>
       </View>
     </PressableScale>
   );
